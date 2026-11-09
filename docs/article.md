@@ -37,7 +37,7 @@ A year later: 1,829 notes.
 
 ## They all have the same shape
 
-Reading back through them, most share one shape, which I came to call **silent failure**:
+Reading back through them, most of them have the same face. I call it **silent failure**:
 
 > **The success signal is real. So is the fact that nothing happened.**
 
@@ -58,15 +58,15 @@ A few:
 In each of these, what the agent can observe is exactly the part that's true.
 **It isn't insufficiently smart. The feedback signal itself is lying.**
 
-These traps also share an economic property: **they don't cost you time when they fail.
-They start charging interest on the day you believed them.**
+These traps have another nasty property: **they don't come after you on the day they fail.
+They wait until you've moved on, and then start charging interest.**
 
 ## So I tried to verify something
 
 If these traps really share a shape, they should be **mechanically** decidable — expressible as a
 grep, a command, a CI check that runs before the agent starts and before the commit lands.
 
-Before investing the time, I needed one number:
+But before actually committing to it, there was one number I needed:
 
 > What fraction of these 1,829 notes **can** be turned into a machine-checkable assertion?
 
@@ -78,70 +78,51 @@ entry by entry.
 
 Three axes (later four): ① is this a trap ② which category ③ can it be mechanically asserted.
 
-## The first number, and why it was off by 3×
+## The first number was off by 3×
 
-- My labels: **20.7%** mechanically assertable
-- The model's: **48.3% – 60.3%**
+I came out at **20.7%**. The model came out at **48.3% – 60.3%**. Both clear 15%, so "do it" was
+never really in doubt — but a 3× gap is more interesting than the verdict.
 
-Both clear the 15% gate, so the answer was "proceed". But **20.7% and 60.3% differ by almost 3×**,
-and that gap turned out to be more interesting than the verdict.
+Going entry by entry, the disagreements nearly all pointed one way: the model thought something
+was mechanizable and I didn't. Looks like plain over-optimism.
 
-Reconciling entry by entry: the disagreements were **almost entirely one-directional**.
-On axis ③ the split was **67 to 7**, every one of them in the direction of "the model thinks this is
-more mechanizable."
+Then I ran it again over only the entries **both of us called a trap**:
+**70.4% vs 77.6% — seven points apart.**
 
-The obvious read is "the model is over-optimistic." One layer down, it isn't.
+So it isn't optimism. On "can this be mechanized" we barely disagree.
+**The argument is one question earlier: what counts as a trap at all.**
+Out of 100, I said 27; the model said 85.
 
-**Restricted to entries both passes called a trap, the mechanization rates are 70.4% vs 77.6% —
-a 7-point gap.**
-
-So we agree almost completely on axis ③. **Every disagreement is concentrated on axis ① — what
-counts as a trap.** I called 27; the model called 85.
-
-And there's a more embarrassing technical reason. The labeling table I used auto-filled the other
-two axes with "other / N/A" whenever axis ① was set to "not a trap." 73 entries, no exceptions.
-Which means **I only actually judged axis ③ 27 times.** That 20.7% is arithmetically about
+The embarrassing part is why. In the table I used for labeling, picking "not a trap" on the first
+axis auto-filled the other two with "other / N/A" — 73 entries, no exceptions. So my 20.7% is really
 "how many I think are traps" × "how many traps are mechanizable."
+**I only ever judged the third axis 27 times.**
 
-**A tool's UI contaminated the conclusion drawn with it.** That belongs on the list as entry 41.
+A form's UI contaminated the conclusion drawn with it. That one belongs on the list as entry 41.
 
-## My own root-cause diagnosis got overturned
+## My own diagnosis got overturned too
 
 So why did I only call 27?
 
-My first diagnosis was that I'd been reading the "background knowledge" label as "is this something I
-already knew?"
+My first explanation was that I'd been reading "background knowledge" as "something I already knew."
+**That explanation was wrong.** The real criterion was different: anything welded to specific
+business logic — anything you wouldn't hit at another company — I filed as background.
 
-**That diagnosis was wrong.** The real criterion was different: I was labeling as background
-everything **tied to specific business logic — things that wouldn't happen at another company.**
+Then I noticed that criterion measures something else entirely. Of the 33 portable traps, **79%**
+are mechanizable. Of the 52 business-bound ones, **77%**. Practically the same.
 
-That criterion verifies in reverse: of the 64 business-bound entries I called 59% background;
-of the 36 portable ones, only 31%. Nearly 2×.
+**"Can someone else use this" and "can this be a mechanical check" are unrelated questions.**
+A trap that only happens inside your company's system can still be written as a grep — you just
+can't hand it to anyone. I'd folded both into one axis, diluting the answer with a variable that had
+nothing to do with it. The number got smaller; I didn't learn anything.
 
-But here is the most useful finding of the whole review:
+So I split them: **① is only about whether the thing bites, ④ only about whether you'd hit it
+somewhere else.** After that, the entries I'd been agonizing over sorted themselves out.
 
-> **That criterion measures a different axis.**
-
-The decisive numbers: **among the 33 portable traps, 79% are mechanically assertable;
-among the 52 business-bound ones, 77%.**
-
-**Portability and assertability are orthogonal.** A trap that only occurs inside one company's system
-can still be written as a mechanical check — it just can't be shared.
-
-Folding "can this be ported" into "is this a trap" means contaminating the conclusion with a variable
-that has nothing to do with it. The number got smaller; the information content didn't change.
-
-So I split them: **① judges harm only** (silent failure / produces an inverted conclusion / lets
-through something that should have been blocked), and **④ judges portability separately**
-(portable / business-bound / machine-bound).
-
-After the split, the entries I'd found genuinely ambiguous resolved themselves. A `503` that turns out
-to be a local proxy is both a real trap *and* only true on my machine — with two axes you don't have
-to choose.
-
-That split also answered something I'd been stuck on:
-**the business-bound notes aren't waste, they're evidence.** They're the only proof that this method
-caught real bugs in a real legacy system. Worthless for a public rule pack; most valuable for the story.
+One unexpected payoff: I'd written off the business-bound notes as unusable.
+**They're not waste, they're the evidence.** "This method caught real bugs in a real old system"
+is something only they can prove. Useless for a public rule pack; the most useful thing I have
+for making the case.
 
 ## One piece of hard evidence
 
@@ -153,9 +134,10 @@ One of them reads: *"four lines of dead stub … not one message gets sent — z
 
 **I labeled that as background.**
 
-A person's judgement of what they wrote drifts that far in a few months — away from the reason they
-wrote it in the first place. Which is itself the argument for mechanizing this:
-not because people aren't smart enough, but because people don't remember why something mattered.
+A few months, and my judgement of my own writing had drifted that far from the reason I wrote it.
+
+Which is exactly the argument for mechanizing it: not because people aren't smart enough,
+but because people don't remember why something mattered.
 
 ## Nine categories
 
