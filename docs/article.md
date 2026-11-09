@@ -3,7 +3,7 @@
 > Companion list: [RULES.md](../RULES.md) — 40 rules, each with a mechanical check.
 > All cases de-identified: the pattern is kept, the scene removed.
 
-## One emoji, nineteen hours
+## One emoji, three hours
 
 A test environment went down. The symptom: **every path returned 500** — including `/favicon.ico`,
 including paths that didn't exist. And the application produced **not one line of log output**.
@@ -12,7 +12,7 @@ Every link in the chain was green. Build succeeded. Image pushed. Container `Up`
 Unpacking the archive showed every class and resource present. The full local Spring context test
 suite was green.
 
-Nineteen hours later: there was a 🔴 in `web.xml`.
+Three hours later: there was a 🔴 in `web.xml`.
 
 That container's XML parser only handles 3-byte UTF-8. An emoji is four bytes.
 Parse failure → the webapp never configures → every path 500 → the logging framework never

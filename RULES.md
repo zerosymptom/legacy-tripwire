@@ -267,7 +267,7 @@ Runtime or middleware limits. They fail **all at once**, and the failure point i
   `python3 -c "print([c for c in open('web.xml',encoding='utf-8').read() if ord(c)>0xFFFF])"` is non-empty.
 - **Why it's so hard to locate**: build succeeds, image pushes, container reports `Up`, the archive
   contains every class and resource, and **full local Spring context tests are green**.
-  Nothing points at this file. One real incident ran **19 hours**.
+  Nothing points at this file. In one real incident it took **3 hours** to locate.
 - **Safe to use**: BMP symbols like `⛔` U+26D4, `⚠` U+26A0, `★` U+2605, and CJK text.
 - **Scope**: only the descriptor the container itself parses. Framework-loaded XML is unaffected.
 - `verified` 2026-10-16 · Resin 4.0.38
