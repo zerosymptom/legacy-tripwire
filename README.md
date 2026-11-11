@@ -8,10 +8,12 @@ Languages: English · [简体中文](README.zh-CN.md)
 
 ## What this is
 
-Not a framework. Not a tool. **There is no code here yet.**
-
-It is a list: [**RULES.md**](RULES.md) — 40 rules, each with
+Mostly a list: [**RULES.md**](RULES.md) — 40 rules, each with
 *symptom / mechanical check / why an AI can't catch it / false-positive boundary / verified date*.
+
+**Three of them are executable checks** ([`engine/`](engine/) — Java 17, no runtime dependencies).
+The rest stay documentation: some are not written yet, and some **should never be mechanised**
+(see "How to use it").
 
 All of them come from a real legacy Java system (Spring MVC + Dubbo + MyBatis,
 MySQL 5.6 and 8.0 side by side, some modules still on `source=1.7`)
@@ -91,6 +93,72 @@ empirically overturned** are written up in [**this article**](docs/article.md).
 "what counts as a trap"** — restricted to entries both passes called a trap,
 the mechanization rates differ by only 7 percentage points. That finding is more useful than the ratio itself.
 
+## Then I measured against a public baseline
+
+The second study used a different corpus: not the after-the-fact notes, but **raw session
+transcripts** — 30 sessions, 185 developer turns, labeled blind first and mapped to a taxonomy
+second, then compared against a public study (20k+ sessions across 1,600+ repositories,
+seven symptom categories plus a per-turn misalignment baseline).
+
+| | |
+|---|---|
+| In-session misalignment rate (public definition) | **0.057** vs public baseline **0.051** — on par |
+| Rework rate (what the public definition cannot see) | **0.205** |
+| **Share of failures that surface no symptom at the time** | **≈ 2/3** |
+| Of the late-surfacing failures, share the seven categories **cannot hold** | **42%** |
+| Labeling agreement / Cohen's κ | 81.3% / **0.296** |
+
+**Two findings you can take away directly:**
+
+1. 🔴 **Treat "0.83 inter-annotator agreement" claims with care — check which statistic it is.**
+   Our raw agreement was 81.3%, essentially matching the 0.83 the public study reports;
+   but κ was only 0.296. On a heavily imbalanced binary task, raw agreement is a very
+   forgiving metric — and that study does not report κ.
+2. 🔴 **The public taxonomy has an empty slot.** It has "misreports the status of its own work,"
+   but no category covers **fabricating a fact inside the produced content**.
+   The opening story in this repo's article originally cited a fabricated duration
+   before being corrected — claiming done-when-not-done and inventing a number that never
+   happened are two different failures.
+
+The 42% that does not fit shares one root cause: **the information is simply not anywhere the
+agent can see it** — rendered UI output, team-internal conventions and ownership, another
+team's implementation in a different repository, a deployment plan that was correct when
+written and stale two months later. That boundary is exactly what this repo aims at.
+
+⚠️ Limits are in [section 9 of the article](docs/article.md). Two of them must be read together:
+**the second annotator was the very AI being evaluated** (hence zero cases of "misreports its own
+status" — judged a method defect, not an achievement), and **the sampling script is not
+reproducible** (the session pool keeps changing; a rerun yields a different corpus, with no error).
+
+## The part that runs
+
+Three of the forty are **executable checks**, in [`engine/`](engine/):
+
+```bash
+cd engine && mvn -q package
+java -jar target/tripwire.jar /path/to/your/checkout
+```
+
+| | what it catches |
+|---|---|
+| **LT-S01** | a literal skip-tests in the build config outranks the command line — `mvn test` reports success having run 0 tests |
+| **LT-S04** | version control ignores the test directory — tests compile, run, pass, then vanish on commit |
+| **LT-P01** | a character above U+FFFF in the deployment descriptor — the container's parser fails, every path returns 500, nothing is logged |
+
+Two deliberate design choices:
+
+- **Exit code `2` means "could not tell", and it is non-zero.** Everything here checks for
+  conditions that look exactly like success. A checker that exits `0` when it could not reach a
+  conclusion would be one more instance of the bug. There is no code meaning "ran but could not
+  tell, carry on".
+- **Every run prints how many files each rule examined**, clean runs included. "No findings"
+  reads identically whether a rule looked at forty files or zero — and the second case is the
+  one that silently stops protecting you.
+
+⛔ Only `MECHANICAL` rules go in the engine; the judgement calls stay documentation. A false
+positive sends an agent to "fix" correct code, which costs more than the miss it prevents.
+A new rule must ship with one fixture that trips it and one that does not, or the build fails.
+
 ## Scope and limits
 
 - ✅ What's published is the **pattern**, not the scene. Module names, schema names,
@@ -102,7 +170,10 @@ the mechanization rates differ by only 7 percentage points. That finding is more
 
 ## License
 
-Documentation under [CC BY 4.0](LICENSE). Use it freely; just credit the source.
+- **The rule catalogue and the article**: [CC BY 4.0](LICENSE). Use it freely; just credit the source.
+- **Code under `engine/`**: [MIT](engine/LICENSE).
+
+⚠️ The split is deliberate — CC BY licences are not meant for source code.
 
 Issues welcome — especially new silent-failure traps. Bring the **check** and the
 **false-positive boundary**; a symptom alone is much less useful.
