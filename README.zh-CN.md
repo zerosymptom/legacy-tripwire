@@ -2,6 +2,8 @@
 
 **AI 在遗留系统里施工时反复踩的 40 个「零症状」坑，以及每个坑的机械判据。**
 
+[![engine](https://github.com/zerosymptom/legacy-tripwire/actions/workflows/engine.yml/badge.svg)](https://github.com/zerosymptom/legacy-tripwire/actions/workflows/engine.yml)
+
 语言：[English](README.md) · 简体中文
 
 ---

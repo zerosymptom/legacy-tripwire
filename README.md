@@ -2,6 +2,8 @@
 
 **40 silent-failure traps that AI coding agents hit over and over in legacy systems — each with a mechanical check.**
 
+[![engine](https://github.com/zerosymptom/legacy-tripwire/actions/workflows/engine.yml/badge.svg)](https://github.com/zerosymptom/legacy-tripwire/actions/workflows/engine.yml)
+
 Languages: English · [简体中文](README.zh-CN.md)
 
 ---
