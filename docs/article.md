@@ -160,6 +160,109 @@ that was never broken) and `TOPOLOGY` (five writers, four trigger paths, and you
 The 40 de-identified rules are [here](../RULES.md), each with a mechanical check and a
 false-positive boundary.
 
+## Then I found a ruler
+
+Those nine categories are mine. One person, one system — I had no way to tell whether they
+generalise or just describe me.
+
+Then a public study turned up: 20,000+ sessions across 1,600+ repositories, sorting
+developer-agent misalignment into seven categories, and — this is the part I wanted — giving a
+number to measure against: in CLI tools, roughly **one misalignment every twenty turns**.
+
+With a ruler, I could measure myself.
+
+This time I changed the corpus. Not the 1,829 after-the-fact notes, but the **raw session
+transcripts**: 30 sessions, 185 things I had actually said, each judged for one thing — was I
+correcting it here?
+
+I did not reverse the order this time: **label blind first, map to the taxonomy second.**
+Order is exactly what tripped me up the first time — once you have seen the suggested values,
+what you produce is no longer your own judgement. So I labeled first, the model labeled
+independently afterwards, and then we reconciled.
+
+### The agreement number looked great, and the metric is hollow
+
+Entry-by-entry agreement: **81.3%** — almost exactly the 0.83 that study reports.
+
+Then I computed Cohen's κ. **0.296.**
+
+Here is the gap. Most of the 185 turns are ordinary; if two annotators both get "most of this is
+fine" right, raw agreement is high by construction. Once κ discounts that chance agreement,
+what is left is mediocre.
+
+That study reports raw agreement and **does not report κ**. So the next time you see
+"inter-annotator agreement 0.83", check which statistic it is — on a heavily imbalanced task,
+raw agreement is a very forgiving number.
+
+### The disagreement, again, was "we weren't measuring the same thing"
+
+24 to 7. I flagged more than twice as many misalignments as the model, and the skew was
+one-directional.
+
+Going through them one by one, it was the same shape as last time: **not strict versus lenient —
+we were measuring different things.**
+
+The model measured "is there a visible correction in this turn" — which is precisely how the
+public study defines it. I measured "**this task exists because something went wrong earlier.**"
+
+The evidence is blunt: a third of what I flagged were kickoff instructions — "do X" — with not
+one word of correction in them. But my notes on those read: "it couldn't see what the page
+renders, so it left a field out", "it queried the wrong database environment", "its new code
+stopped the service from starting."
+
+### Two numbers
+
+By the public definition I come out at **0.057**, against a baseline of **0.051**. **On par.**
+Not better — the sample sizes differ by three orders of magnitude, and that gap sits inside
+the noise.
+
+The interesting one is the other: by the "later rework" definition, **0.205**.
+
+Divide them — **roughly two thirds of the failures surface no symptom at the time.**
+
+Which loops straight back to what this whole piece is about. Under that study's definition, a
+misalignment only counts if **the developer's correction is visible in the transcript.**
+Anything nobody noticed in the moment is structurally uncountable.
+
+### A batch of things its seven boxes cannot hold
+
+Pushing the late-surfacing failures into the seven categories, **42% don't fit.**
+
+What doesn't fit shares a root cause: **the information isn't anywhere the agent can see.**
+
+- It can't see what the page renders, so it doesn't know a field is missing
+- It doesn't know what a term means here, or whose job this is
+- Another team's code lives in a different repository; it has no way to know their implementation
+- A deployment plan that was correct when written can't be trusted two months later
+
+None of these is "misread the code" — whether it misread is moot, the thing was never readable.
+
+### One more box is empty, and I fell into it myself
+
+One of those seven is "misreports the status of its own work": claims done, isn't done.
+
+But **no category** covers a different thing: **fabricating a fact inside the content it produces.**
+
+I have first-hand evidence. The emoji story that opens this piece — I originally wrote that it
+took **19 hours** to track down.
+
+**That number was invented.** It was pointed out later, and corrected to three.
+
+"Said it was done when it wasn't" and "invented a number that never happened" are two different
+failures. The first has a box. The second doesn't.
+
+### The limits here matter more than last time
+
+- **n = 166**, a single sample. One misalignment ≈ 0.6 percentage points — don't read the second decimal
+- **κ = 0.296**, meaning "what counts as a misalignment" was not pinned down before I started
+- 🔴 **The other annotator was the very AI being evaluated.** Notably, "misreports its own status"
+  came out at **zero** — I take that as a method defect rather than a result: judging that class
+  means checking claims against evidence, and neither of us went back to verify the outputs
+- 🔴 **The sampling script is not reproducible**: the session pool keeps changing, a rerun pulls a
+  different corpus, **and nothing errors out.** That one belongs on the list as entry 41
+- The time windows are half a year apart, across model generations — not a like-for-like comparison
+- The "surfaced later" axis was reconstructed after the fact from memory and notes, not recorded live
+
 ## If you're shipping code with an AI today
 
 Three things you can use immediately:
@@ -196,11 +299,20 @@ The real problem isn't the model's ability to write code. It's that **legacy sys
 feedback.** A person who has lived in one grows a layer of instinct: seeing `BUILD SUCCESS`, they
 glance at the test count; hearing "all tests green", they first check the tests are actually tracked.
 
-**An agent has no such layer — and it doesn't grow one from getting burned, because the next session
-starts fresh.**
+Someone will point out that agents have memory now — surely getting burned once is enough.
 
-So the fix isn't "make the AI smarter". It's to **externalise that instinct into something it can look
-up every time.**
+Those 1,829 entries *are* its memory store, and yes, it can look them up. But in practice:
+**memory solves "can it be found", not "does it occur to you to look".**
+Those entries were written down afterwards by a person — they didn't crystallise out of the
+failure on their own. Whatever nobody wrote down gets hit again; and knowing *which entry to
+pull right now* takes exactly the layer of instinct described above.
+
+**It also misremembers.** One entry on this very list is a tool claiming it had already shown a
+piece of source earlier in the session, then proceeding on that assumption and skipping the part
+that actually needed reading. When it misremembers, it sounds exactly like when it doesn't.
+
+So the fix isn't "make the AI smarter", and it isn't "give it more memory" — it's to take the part
+of that instinct that can become a command, and **turn it from a note into a check.**
 
 That list is the first attempt. Forty entries, documentation only, no code.
 If you also work in a legacy system alongside an agent, contributions welcome —
@@ -209,6 +321,14 @@ bring the **check** and the **false-positive boundary**. A symptom alone is far 
 ---
 
 *Methodological disclosure: the sample is one person on one system. It's biased, and effort doesn't
-fix that. The human pass was contaminated by the labeling tool's UI (see above).
+fix that.*
+
+*First study: the human pass was contaminated by the labeling tool's UI (see above).
 A third label set exists but is "wholesale adoption of the model's suggestions plus two edits" —
 ⛔ it must not be cited as an independent data point.*
+
+*Second study: n=166, κ=0.296; the other annotator was the very AI being evaluated; the sampling
+script is not reproducible; and 0.057 is the figure after deducting three misjudgements the model
+itself conceded and folding the short sessions it had excluded back into the denominator —
+uncorrected it reads 0.102, and **the upward skew was caused by my own sampling.**
+Both studies' human labeling was done entirely by one person. There was no second human.*
