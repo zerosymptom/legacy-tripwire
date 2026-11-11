@@ -1,0 +1,4 @@
+# Replay fixtures are deliberately broken — that is their entire job.
+# Scanning them would make this project trip on itself on every run.
+# ⛔ Nothing else belongs in here: the engine's own source must stay under the checks it ships.
+src/test/resources/replay

@@ -1,0 +1,4 @@
+<web-app>
+  <!-- ⛔ ⚠ ★ BMP symbols and CJK are fine -->
+  <display-name>演示</display-name>
+</web-app>

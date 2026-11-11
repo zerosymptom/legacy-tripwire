@@ -1,0 +1,42 @@
+name: engine
+
+on:
+  push:
+    paths: ['engine/**', '.github/workflows/engine.yml']
+  pull_request:
+    paths: ['engine/**', '.github/workflows/engine.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      - name: Test
+        run: mvn -B clean test
+
+      # BUILD SUCCESS with zero tests executed is LT-S01, one of the rules this repo ships.
+      # Asserting the count is the cheapest way to not ship the bug we document.
+      - name: Assert the tests actually ran
+        run: |
+          total=$(grep -ho 'tests="[0-9]*"' target/surefire-reports/*.xml \
+                  | grep -o '[0-9]*' | paste -sd+ - | bc)
+          echo "tests executed: ${total:-0}"
+          test "${total:-0}" -ge 16
+
+      - name: Package
+        run: mvn -B package -DskipTests
+
+      # Dogfood: the engine must come back clean on its own checkout.
+      - name: Scan this repository
+        run: java -jar target/tripwire.jar .

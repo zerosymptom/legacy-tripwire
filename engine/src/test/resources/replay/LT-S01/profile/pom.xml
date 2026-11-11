@@ -1,0 +1,7 @@
+<project><modelVersion>4.0.0</modelVersion>
+  <groupId>x</groupId><artifactId>y</artifactId><version>1</version>
+  <profiles><profile><id>fast</id><build><plugins><plugin>
+    <artifactId>maven-surefire-plugin</artifactId>
+    <configuration><skipTests>true</skipTests></configuration>
+  </plugin></plugins></build></profile></profiles>
+</project>

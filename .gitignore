@@ -1,1 +1,11 @@
 .DS_Store
+
+# Build output
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
