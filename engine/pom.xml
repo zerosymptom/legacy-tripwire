@@ -32,6 +32,39 @@
   <build>
     <finalName>tripwire</finalName>
     <plugins>
+      <!--
+        Fail early, and say the true reason.
+
+        Without this, building on JDK 8 or 11 stops at maven-compiler-plugin with
+        "No compiler is provided in this environment. Perhaps you are running on a JRE
+        rather than a JDK?" — which is false. The JDK is right there; it is simply too old
+        for release=17. The readers most likely to try this repo are the ones maintaining
+        decade-old Java, so they are also the ones most likely to have an old JDK on PATH
+        and to go hunting for a JRE/JDK problem that does not exist.
+
+        An error that points at the wrong cause is the failure this whole catalogue is about.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>jdk-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[17,)</version>
+                  <message>tripwire needs JDK 17 or newer to build — check the JDK Maven itself is running on (mvn -v), not only JAVA_HOME. Newer is fine: built and tested on 17, 21 and 26. If you were about to go looking for a JRE-vs-JDK problem, this is the actual cause.</message>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>

@@ -1,7 +1,11 @@
 # tripwire — the executable part
 
 Five of the rules in [`RULES.md`](../RULES.md), as checks you can run.
-Java 17, no runtime dependencies, one jar.
+**JDK 17 or newer** (17, 21 and 26 are tested), no runtime dependencies, one jar.
+
+> On JDK 8 or 11 the build stops with an explicit version message. Without that guard
+> Maven reports *"No compiler is provided… perhaps you are running on a JRE"*, which is
+> untrue and sends you after the wrong problem — the failure mode this repo is about.
 
 ```bash
 cd engine
