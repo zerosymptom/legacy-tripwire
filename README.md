@@ -175,6 +175,11 @@ java -jar target/tripwire.jar /path/to/your/checkout
 | **LT-S08** | a scheduled method with no top-level `catch (Throwable)` — the first throw drops the job from the scheduler for good, in silence |
 | **LT-S12** | an implementation missing from `META-INF/services` — it compiles, it is reviewed, and `ServiceLoader` never instantiates it |
 
+Run against 23 modules of a real decade-old Java estate: 20 tripped, zero `UNKNOWN`, and the
+55 LT-S08 findings were confirmed 55/55 by a second independently written checker.
+Full table and the two caveats that matter — why 55 is also 34, and why **LT-S12 has never
+matched outside its own fixtures** — in [`engine/README.md`](engine/README.md).
+
 Two deliberate design choices:
 
 - **Exit code `2` means "could not tell", and it is non-zero.** Everything here checks for

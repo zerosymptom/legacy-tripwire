@@ -63,6 +63,33 @@ resolved from the file alone.
 | **LT-S08** | a scheduled method whose body has no top-level `catch (Throwable)`; the first throw removes the task from the scheduler for the life of the process, logging nothing | masks strings and comments, then brace-matches the method body. A `catch` that covers only part of the body, or catches narrower than `Throwable`, still trips — an `Error` cancels the task just as permanently |
 | **LT-S12** | a class implementing an SPI interface that nobody added to `META-INF/services/<fqn>`; it compiles, it reviews, and `ServiceLoader` never instantiates it | reads each registry file and matches implementations that are in the interface's package or import it by name. ⚠️ A class inheriting the interface through a base class is **not** detected — resolving that needs a type graph |
 
+## What they found on a real estate
+
+Run across **23 modules** of a commercial Java estate (four product lines, roughly a decade old),
+2026-11-12:
+
+| | findings | distinct code locations | verdict |
+|---|---:|---:|---|
+| **LT-S01** | 17 | 17 | builds that would report success having run zero tests |
+| **LT-S04** | 12 | 12 | test files that compile, pass, and vanish on commit — all in one module |
+| **LT-S08** | 55 | **34** | 43 of the 55 have no `try` at all; the other 12 catch narrower than `Throwable` |
+| **LT-P01** | 0 | 0 | — |
+| **LT-S12** | 0 | 0 | ⚠️ see below |
+
+20 of 23 modules tripped something. **Zero `UNKNOWN`.** All 55 LT-S08 findings were re-derived by
+a second, independently written checker: **55/55 agreed, no false positives**.
+
+⚠️ **Two numbers, not one.** The 55 and the 34 differ because three product lines ship copies of
+the same files; each copy is a separate running service, so 55 is the operational count and 34
+the distinct-defect count. Quoting 55 as "distinct bugs" would be inflation, and the inflation
+is 62%.
+
+⚠️ **LT-S12 has never matched outside its own fixtures.** Zero hits across all 23 modules. The
+pattern it encodes is real — it cost a real investigation, which is why it is in the catalogue —
+but **the check itself is unproven in the field**, and it should not be read as carrying the same
+weight as LT-S01 or LT-S08. LT-P01 also scored zero here; that one has a known field incident
+behind it, the condition simply is not present in these modules today.
+
 ## Adding a rule
 
 Two things, both enforced by the build:
