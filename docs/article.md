@@ -274,14 +274,33 @@ I had been about to email the authors about the gap. The dataset took twenty min
 download. **Cheap verification existed and I nearly skipped it in favour of asking someone** —
 which, written out, is the same failure this whole piece is about.
 
-**What survived is better than what I claimed.** Their scheme does have an explicit "other"
-bucket. Across 7,760 episodes it is used **16 times — 0.21%** — and all sixteen are garbled or
-non-responsive output. On my corpus the residual was **42%**. A two-hundred-fold gap wants an
-explanation and I do not have one. Candidates: their annotation ran from a prompt naming seven
-categories, and a model handed seven names plus "other" will reach for the names; or my
-material genuinely differs; or my residual is inflated because, as the κ already said, my
-criteria were never crisp. That is a real open question — and unlike the one I almost sent, it
-is worth someone's time.
+**And looking properly found a better gap, one axis over.**
+
+Their scheme codes a cause as well as a symptom. The nearest cause to what I had been
+circling is *Premature Action*: "the agent acted before gathering information about the
+current project state — didn't read the existing code, didn't check the config." Read the
+anchor. It is about information that **was there to be read**. *Cannot Determine*, the other
+candidate, is about the annotator not being able to infer a cause — not about the agent not
+being able to reach one.
+
+Nothing in their cause codes means **the information was not obtainable**. I searched their
+7,760 episodes for text that says so outright: **4 of them. 0.05%.** Those four are filed
+under four different causes. No home.
+
+⚠️ That 0.05% has to be read carefully, and the careful reading is the stronger one: it
+measures whether the idea is in their vocabulary, not whether it happens in their sessions.
+Annotators with no code for a thing do not write the words for it. **It is evidence about the
+instrument, not about the world.**
+
+Same direction, separately: their symptom scheme has an "other" bucket and explicitly tells
+annotators to use it freely. Across 7,760 episodes: **16 times, 0.21%**, all of them garbled
+or non-responsive output. My own residual was 42%.
+
+So here is the narrow version, the one I will defend: **their scheme has no code for
+unobtainable information, and 6 of my 166 turns failed for exactly that reason.** Whether
+their sessions contain the same failures, I cannot tell you — their annotators had no way to
+write it down. That is a question worth someone's time, and unlike the one I almost emailed,
+it survives contact with their data.
 
 ### The limits here matter more than last time
 

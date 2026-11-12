@@ -123,13 +123,25 @@ seven symptom categories plus a per-turn misalignment baseline).
    measuring different things — and it does not hold: aligning the task definition moves
    κ from 0.296 to 0.307. The labels in
    [tripwire-corpus](https://github.com/zerosymptom/tripwire-corpus) let you redo this.
-2. 🔴 **Their residual bucket is used 0.21% of the time. Mine was 42%.**
-   Their scheme has an explicit "other" category; across the 7,760 annotated episodes in
-   their public replication package it is used 16 times, all for garbled or non-responsive
-   output. Of my late-surfacing failures, 42% fit nowhere in the seven. A two-hundred-fold
-   gap wants an explanation; the candidates — an annotation prompt anchored on seven named
-   categories, genuinely different material, or my own loose criteria — are not yet
-   distinguishable, and that is the open question.
+2. 🔴 **The gap is in the cause axis, not the symptom axis: nothing there means
+   "the information was not obtainable."** Their nearest cause code is *Premature Action* —
+   "the agent acted before gathering information… didn't read the existing code, didn't
+   check the config" — which anchors on information that was there to be read. *Cannot
+   Determine* is about the annotator's uncertainty, not the agent's reach. Searching their
+   7,760 published episodes for text that explicitly says the information was unobtainable
+   returns **4 (0.05%)**, scattered across four different cause codes with no home.
+
+   ⚠️ Read that 0.05% correctly: it measures whether the concept is in their vocabulary,
+   not whether the phenomenon is in their sessions. Annotators with no code for something
+   do not write the words for it. It is evidence about the instrument, not the world.
+
+   Related, same direction: their symptom scheme has an explicit "other" bucket and tells
+   annotators to use it freely; across 7,760 episodes it is used **16 times (0.21%)**, all
+   for garbled or non-responsive output. My own late-surfacing residual was 42%.
+
+   The narrow claim I will defend: **their scheme has no code for unobtainable information,
+   and on my corpus 6 of 166 turns failed for exactly that reason.** Whether their sessions
+   contain the same thing, I cannot say — their annotators had no way to record it.
 
    ⚠️ **Retracted:** an earlier version of this section claimed the taxonomy had no category
    for *fabricating a fact inside produced content*. It does — 96 episodes in their dataset
