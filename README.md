@@ -88,6 +88,8 @@ the corpus already contains a rule that upstream fixed *after* it was written do
 | Mechanically assertable | **20.7% – 60.3%** (lower and upper bound from the two independent passes) |
 | Pre-registered kill switch | below 15% → abandon the project |
 
+The six-step method, with what went wrong at each step, is in [**METHOD.md**](METHOD.md).
+
 The method, the disagreements, and one place where **my own root-cause diagnosis was
 empirically overturned** are written up in [**this article**](docs/article.md).
 
