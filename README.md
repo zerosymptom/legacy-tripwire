@@ -123,11 +123,18 @@ seven symptom categories plus a per-turn misalignment baseline).
    measuring different things — and it does not hold: aligning the task definition moves
    κ from 0.296 to 0.307. The labels in
    [tripwire-corpus](https://github.com/zerosymptom/tripwire-corpus) let you redo this.
-2. 🔴 **The public taxonomy has an empty slot.** It has "misreports the status of its own work,"
-   but no category covers **fabricating a fact inside the produced content**.
-   The opening story in this repo's article originally cited a fabricated duration
-   before being corrected — claiming done-when-not-done and inventing a number that never
-   happened are two different failures.
+2. 🔴 **Their residual bucket is used 0.21% of the time. Mine was 42%.**
+   Their scheme has an explicit "other" category; across the 7,760 annotated episodes in
+   their public replication package it is used 16 times, all for garbled or non-responsive
+   output. Of my late-surfacing failures, 42% fit nowhere in the seven. A two-hundred-fold
+   gap wants an explanation; the candidates — an annotation prompt anchored on seven named
+   categories, genuinely different material, or my own loose criteria — are not yet
+   distinguishable, and that is the open question.
+
+   ⚠️ **Retracted:** an earlier version of this section claimed the taxonomy had no category
+   for *fabricating a fact inside produced content*. It does — 96 episodes in their dataset
+   describe exactly that, filed under self-reporting. The claim came from reading a category
+   name instead of its contents, and the dataset that refutes it is a twenty-minute download.
 
 The 42% that does not fit shares one root cause: **the information is simply not anywhere the
 agent can see it** — rendered UI output, team-internal conventions and ownership, another

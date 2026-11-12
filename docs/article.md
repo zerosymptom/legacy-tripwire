@@ -253,19 +253,35 @@ What doesn't fit shares a root cause: **the information isn't anywhere the agent
 
 None of these is "misread the code" — whether it misread is moot, the thing was never readable.
 
-### One more box is empty, and I fell into it myself
+### I said one more box was empty. It isn't
 
 One of those seven is "misreports the status of its own work": claims done, isn't done.
 
-But **no category** covers a different thing: **fabricating a fact inside the content it produces.**
+I had first-hand evidence of something I was sure it didn't cover. The emoji story that opens
+this piece — I originally wrote that it took **19 hours** to track down. That number was
+invented. It was pointed out later and corrected to three. Claiming done-when-not-done and
+inventing a number that never happened felt like two different failures, so I wrote that the
+taxonomy had a box for the first and none for the second.
 
-I have first-hand evidence. The emoji story that opens this piece — I originally wrote that it
-took **19 hours** to track down.
+Then I downloaded their replication package: 7,760 annotated episodes, public, MIT licensed.
+Ninety-six of them describe exactly that second thing. *"Repeated Fabrication Of Metrics
+Actions And Outcomes — the agent repeatedly inserted made-up numbers, actions, and outcomes."*
+*"Overstated Test Results In Archive Summary."* All filed under that same category. The box was
+never empty. I had read a one-line category name, inferred its boundaries, and never looked at
+what was inside it.
 
-**That number was invented.** It was pointed out later, and corrected to three.
+I had been about to email the authors about the gap. The dataset took twenty minutes to
+download. **Cheap verification existed and I nearly skipped it in favour of asking someone** —
+which, written out, is the same failure this whole piece is about.
 
-"Said it was done when it wasn't" and "invented a number that never happened" are two different
-failures. The first has a box. The second doesn't.
+**What survived is better than what I claimed.** Their scheme does have an explicit "other"
+bucket. Across 7,760 episodes it is used **16 times — 0.21%** — and all sixteen are garbled or
+non-responsive output. On my corpus the residual was **42%**. A two-hundred-fold gap wants an
+explanation and I do not have one. Candidates: their annotation ran from a prompt naming seven
+categories, and a model handed seven names plus "other" will reach for the names; or my
+material genuinely differs; or my residual is inflated because, as the κ already said, my
+criteria were never crisp. That is a real open question — and unlike the one I almost sent, it
+is worth someone's time.
 
 ### The limits here matter more than last time
 
