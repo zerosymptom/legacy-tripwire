@@ -13,7 +13,7 @@ Languages: English · [简体中文](README.zh-CN.md)
 Mostly a list: [**RULES.md**](RULES.md) — 40 rules, each with
 *symptom / mechanical check / why an AI can't catch it / false-positive boundary / verified date*.
 
-**Three of them are executable checks** ([`engine/`](engine/) — Java 17, no runtime dependencies).
+**Five of them are executable checks** ([`engine/`](engine/) — Java 17, no runtime dependencies).
 The rest stay documentation: some are not written yet, and some **should never be mechanised**
 (see "How to use it").
 
@@ -160,7 +160,7 @@ reproducible** (the session pool keeps changing; a rerun yields a different corp
 
 ## The part that runs
 
-Three of the forty are **executable checks**, in [`engine/`](engine/):
+Five of the forty are **executable checks**, in [`engine/`](engine/):
 
 ```bash
 cd engine && mvn -q package
@@ -172,6 +172,8 @@ java -jar target/tripwire.jar /path/to/your/checkout
 | **LT-S01** | a literal skip-tests in the build config outranks the command line — `mvn test` reports success having run 0 tests |
 | **LT-S04** | version control ignores the test directory — tests compile, run, pass, then vanish on commit |
 | **LT-P01** | a character above U+FFFF in the deployment descriptor — the container's parser fails, every path returns 500, nothing is logged |
+| **LT-S08** | a scheduled method with no top-level `catch (Throwable)` — the first throw drops the job from the scheduler for good, in silence |
+| **LT-S12** | an implementation missing from `META-INF/services` — it compiles, it is reviewed, and `ServiceLoader` never instantiates it |
 
 Two deliberate design choices:
 

@@ -3,6 +3,8 @@ package dev.legacytripwire;
 import dev.legacytripwire.rules.GitignoredTests;
 import dev.legacytripwire.rules.NonBmpInContainerXml;
 import dev.legacytripwire.rules.SkipTestsLiteral;
+import dev.legacytripwire.rules.UnguardedScheduledMethod;
+import dev.legacytripwire.rules.UnregisteredSpiImplementation;
 
 import java.util.List;
 
@@ -22,6 +24,8 @@ public final class Rules {
         return List.of(
                 new SkipTestsLiteral(),
                 new GitignoredTests(),
-                new NonBmpInContainerXml());
+                new NonBmpInContainerXml(),
+                new UnguardedScheduledMethod(),
+                new UnregisteredSpiImplementation());
     }
 }

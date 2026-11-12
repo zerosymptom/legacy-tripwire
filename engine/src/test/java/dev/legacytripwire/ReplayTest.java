@@ -3,6 +3,8 @@ package dev.legacytripwire;
 import dev.legacytripwire.rules.GitignoredTests;
 import dev.legacytripwire.rules.NonBmpInContainerXml;
 import dev.legacytripwire.rules.SkipTestsLiteral;
+import dev.legacytripwire.rules.UnguardedScheduledMethod;
+import dev.legacytripwire.rules.UnregisteredSpiImplementation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -111,6 +113,74 @@ class ReplayTest {
         List<Finding> f = new GitignoredTests().check(plain);
         assertEquals(1, of(f, Verdict.UNKNOWN).size(),
                 "a directory that is not a repo must be UNKNOWN, not CLEAR: " + f);
+    }
+
+    // ---------------------------------------------------------------- LT-S08
+
+    @Test
+    @DisplayName("LT-S08 trips on a scheduled method with no top-level guard")
+    void s08_trips_on_unguarded_job() {
+        List<Finding> f = new UnguardedScheduledMethod().check(fixture("LT-S08", "trip"));
+        assertEquals(1, of(f, Verdict.TRIPPED).size(), f.toString());
+        assertTrue(f.get(0).detail().contains("removes this task from the scheduler"),
+                f.get(0).detail());
+    }
+
+    @Test
+    @DisplayName("LT-S08 stays clear on catch (Throwable), on unscheduled methods, and on a brace in a string")
+    void s08_respects_the_false_positive_boundary() {
+        // All three shapes share one fixture so a regression on any of them fails here rather
+        // than on someone else's repository. The brace-in-a-string case is the one that would
+        // silently shift every later method boundary if the masking broke.
+        List<Finding> f = new UnguardedScheduledMethod().check(fixture("LT-S08", "clear"));
+        assertTrue(f.isEmpty(), "expected no findings, got " + f);
+    }
+
+    @Test
+    @DisplayName("LT-S08 counts the scheduled methods it examined, not the files")
+    void s08_reports_its_scope() {
+        assertEquals("1 scheduled methods", new UnguardedScheduledMethod().scope(fixture("LT-S08", "trip")));
+    }
+
+    @Test
+    @DisplayName("LT-S08 returns UNKNOWN on a source it cannot decode — never a quiet skip")
+    void s08_unreadable_source_is_unknown(@TempDir Path tmp) throws Exception {
+        // Found on a real tree: a GBK-encoded *Schedule.java in a task/timer package was dropped
+        // silently, so the rule reported CLEAR for the module most likely to need it. That is
+        // LT-S14 (a checker that fails open) committed by this checker.
+        Path dir = Files.createDirectories(tmp.resolve("legacy"));
+        Files.write(dir.resolve("TaskSchedule.java"),
+                new byte[] {'@', 'S', 'c', 'h', 'e', 'd', 'u', 'l', 'e', 'd', '\n', (byte) 0xC4, (byte) 0xE3});
+        List<Finding> f = new UnguardedScheduledMethod().check(dir);
+        assertEquals(1, of(f, Verdict.UNKNOWN).size(), "must be UNKNOWN, not a silent skip: " + f);
+        assertTrue(new UnguardedScheduledMethod().scope(dir).contains("not readable as UTF-8"),
+                "the scope line has to admit what it could not read");
+    }
+
+    // ---------------------------------------------------------------- LT-S12
+
+    @Test
+    @DisplayName("LT-S12 trips on an implementation missing from META-INF/services")
+    void s12_trips_on_unregistered_implementation() {
+        List<Finding> f = new UnregisteredSpiImplementation().check(fixture("LT-S12", "trip"));
+        assertEquals(1, of(f, Verdict.TRIPPED).size(), f.toString());
+        assertTrue(f.get(0).detail().contains("com.example.spi.RangeValidator"), f.get(0).detail());
+        assertTrue(f.get(0).detail().contains("never instantiate it"), f.get(0).detail());
+    }
+
+    @Test
+    @DisplayName("LT-S12 stays clear when every implementation is listed — and never flags the interface itself")
+    void s12_clear_when_all_registered() {
+        List<Finding> f = new UnregisteredSpiImplementation().check(fixture("LT-S12", "clear"));
+        assertTrue(f.isEmpty(), "expected no findings, got " + f);
+    }
+
+    @Test
+    @DisplayName("LT-S12 finds nothing to say in a tree with no registry files")
+    void s12_silent_without_registries() {
+        assertTrue(new UnregisteredSpiImplementation().check(fixture("LT-S08", "clear")).isEmpty());
+        assertEquals("0 SPI registry files",
+                new UnregisteredSpiImplementation().scope(fixture("LT-S08", "clear")));
     }
 
     // ---------------------------------------------------------------- the red line

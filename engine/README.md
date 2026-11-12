@@ -1,6 +1,6 @@
 # tripwire — the executable part
 
-Three of the rules in [`RULES.md`](../RULES.md), as checks you can run.
+Five of the rules in [`RULES.md`](../RULES.md), as checks you can run.
 Java 17, no runtime dependencies, one jar.
 
 ```bash
@@ -15,10 +15,12 @@ java -jar target/tripwire.jar /path/to/a/checkout
 
 ```
 tripwire  /path/to/a/checkout
-rules: 3   findings: 0
+rules: 5   findings: 0
   LT-S01  examined 6 pom.xml
   LT-S04  examined 22 test sources
   LT-P01  examined 0 deployment descriptors
+  LT-S08  examined 4 scheduled methods
+  LT-S12  examined 1 SPI registry files
 
 CLEAR — no rule matched.
 (This means the checks that exist found nothing. It is not a statement about the rest of the codebase.)
@@ -54,6 +56,8 @@ resolved from the file alone.
 | **LT-S01** | a literal skip-tests in the build config outranks `-DskipTests=false`; `mvn test` reports success having run 0 tests | parses every `pom.xml`; literal `true` inside the surefire/failsafe configuration. A property reference (`${skipTests}`) or a `<properties>` default is **not** this rule — those stay overridable |
 | **LT-S04** | version control ignores the test sources; they compile, run, pass, and vanish on commit | shells out to `git check-ignore -v` for each test source. We do not reimplement ignore semantics — an approximation would produce exactly the confidently-wrong answer this project exists to prevent |
 | **LT-P01** | a character above U+FFFF in the deployment descriptor; the container's parser rejects it, every path returns 500, and nothing is logged | scans `web.xml` and `WEB-INF/*.xml` for code points `> 0xFFFF`. BMP symbols (`⛔ ⚠ ★`) and CJK are fine |
+| **LT-S08** | a scheduled method whose body has no top-level `catch (Throwable)`; the first throw removes the task from the scheduler for the life of the process, logging nothing | masks strings and comments, then brace-matches the method body. A `catch` that covers only part of the body, or catches narrower than `Throwable`, still trips — an `Error` cancels the task just as permanently |
+| **LT-S12** | a class implementing an SPI interface that nobody added to `META-INF/services/<fqn>`; it compiles, it reviews, and `ServiceLoader` never instantiates it | reads each registry file and matches implementations that are in the interface's package or import it by name. ⚠️ A class inheriting the interface through a base class is **not** detected — resolving that needs a type graph |
 
 ## Adding a rule
 
