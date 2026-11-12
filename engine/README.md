@@ -1,6 +1,6 @@
 # tripwire — the executable part
 
-Five of the rules in [`RULES.md`](../RULES.md), as checks you can run.
+Seven of the rules in [`RULES.md`](../RULES.md), as checks you can run.
 **JDK 17 or newer** (17, 21 and 26 are tested), no runtime dependencies, one jar.
 
 > On JDK 8 or 11 the build stops with an explicit version message. Without that guard
@@ -19,12 +19,14 @@ java -jar target/tripwire.jar /path/to/a/checkout
 
 ```
 tripwire  /path/to/a/checkout
-rules: 5   findings: 0
+rules: 7   findings: 0
   LT-S01  examined 6 pom.xml
   LT-S04  examined 22 test sources
   LT-P01  examined 0 deployment descriptors
   LT-S08  examined 4 scheduled methods
   LT-S12  examined 1 SPI registry files
+  LT-S09  examined 180 java sources
+  LT-S11  examined 4 scheduled methods, 61 files that could size the pool
 
 CLEAR — no rule matched.
 (This means the checks that exist found nothing. It is not a statement about the rest of the codebase.)
@@ -62,6 +64,8 @@ resolved from the file alone.
 | **LT-P01** | a character above U+FFFF in the deployment descriptor; the container's parser rejects it, every path returns 500, and nothing is logged | scans `web.xml` and `WEB-INF/*.xml` for code points `> 0xFFFF`. BMP symbols (`⛔ ⚠ ★`) and CJK are fine |
 | **LT-S08** | a scheduled method whose body has no top-level `catch (Throwable)`; the first throw removes the task from the scheduler for the life of the process, logging nothing | masks strings and comments, then brace-matches the method body. A `catch` that covers only part of the body, or catches narrower than `Throwable`, still trips — an `Error` cancels the task just as permanently |
 | **LT-S12** | a class implementing an SPI interface that nobody added to `META-INF/services/<fqn>`; it compiles, it reviews, and `ServiceLoader` never instantiates it | reads each registry file and matches implementations that are in the interface's package or import it by name. ⚠️ A class inheriting the interface through a base class is **not** detected — resolving that needs a type graph |
+| **LT-S09** | a `static final` field initialised from the config service; changing the value in the UI does nothing until a restart, and nothing says so | matches a config-shaped receiver plus a value-returning read. ⚠️ `getInstance` / `getBean` are excluded — freezing a singleton is correct, and including them produced 42 findings against code that was fine |
+| **LT-S11** | two or more scheduled methods with an unsized pool; Spring's default `TaskScheduler` runs **one** thread, so one slow run delays all the others | counts scheduled entry points, then looks for any way the pool is sized. One finding per checkout, not per method. Never fires on a single job |
 
 ## What they found on a real estate
 
@@ -74,6 +78,8 @@ Run across **23 modules** of a commercial Java estate (four product lines, rough
 | **LT-S04** | 12 | 12 | test files that compile, pass, and vanish on commit — all in one module |
 | **LT-S08** | 55 | **34** | 43 of the 55 have no `try` at all; the other 12 catch narrower than `Throwable` |
 | **LT-P01** | 0 | 0 | — |
+| **LT-S09** | 28 | 28 | config values frozen at class load (gj + kx only; the sweep timed out before vv) |
+| **LT-S11** | 5 | 5 | one per module — up to 11 scheduled methods sharing a single thread |
 | **LT-S12** | 0 | 0 | ⚠️ see below |
 
 20 of 23 modules tripped something. **Zero `UNKNOWN`.** All 55 LT-S08 findings were re-derived by
@@ -104,6 +110,25 @@ claim becomes permanent.
 Only `MECHANICAL` rules belong here. The catalogue also carries rules whose check is a
 judgement call; those stay documentation. A false positive sends an agent to "fix" correct
 code, which costs more than the miss it prevents.
+
+## The one we wrote and did not ship
+
+`LT-S10` is implemented, has both fixtures, and passes its tests. It is **not registered**, so
+it never runs.
+
+The check is correct. Pointed at the same 23 modules it found **771 instances across 538
+files** — every one a genuine case of the pattern it looks for: a config value defaulting to
+null feeding a "only run on this host" gate, where one unset key takes out every host at once
+rather than one.
+
+And that is exactly why it does not ship. The idiom is used deliberately, it works wherever the
+key is set, and 771 findings against code that is fine today is not a gate — it is a wall of
+text someone learns to scroll past. The rule right above this file says a false positive costs
+more than a miss, because an agent reading one goes and changes correct code. **Seven hundred
+of them would be seven hundred edits nobody asked for.**
+
+Density turned a true positive into noise. It stays in `RULES.md` as `MANUAL`, where a human
+can weigh it, and the code stays here so the next person does not rediscover it from scratch.
 
 ## `.tripwireignore`
 

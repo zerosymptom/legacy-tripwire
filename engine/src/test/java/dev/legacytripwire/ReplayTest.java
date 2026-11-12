@@ -2,7 +2,10 @@ package dev.legacytripwire;
 
 import dev.legacytripwire.rules.GitignoredTests;
 import dev.legacytripwire.rules.NonBmpInContainerXml;
+import dev.legacytripwire.rules.NullDefaultedConfigGate;
 import dev.legacytripwire.rules.SkipTestsLiteral;
+import dev.legacytripwire.rules.StaticFinalFromConfig;
+import dev.legacytripwire.rules.UnconfiguredSchedulerPool;
 import dev.legacytripwire.rules.UnguardedScheduledMethod;
 import dev.legacytripwire.rules.UnregisteredSpiImplementation;
 import org.junit.jupiter.api.DisplayName;
@@ -192,6 +195,58 @@ class ReplayTest {
         // class this project refuses to ship.
         List<Finding> f = new UnregisteredSpiImplementation().check(fixture("LT-S12", "twomodules"));
         assertTrue(f.isEmpty(), "each module registers its own implementation: " + f);
+    }
+
+    // ---------------------------------------------------------------- LT-S09
+
+    @Test
+    @DisplayName("LT-S09 trips on a static final initialised from the config service")
+    void s09_trips_on_frozen_config() {
+        List<Finding> f = new StaticFinalFromConfig().check(fixture("LT-S09", "trip"));
+        assertEquals(1, of(f, Verdict.TRIPPED).size(), f.toString());
+        assertTrue(f.get(0).detail().contains("freezes at class load"), f.get(0).detail());
+    }
+
+    @Test
+    @DisplayName("LT-S09 leaves a frozen logger, a non-final field, and a constant mentioning getConfig alone")
+    void s09_respects_the_false_positive_boundary() {
+        List<Finding> f = new StaticFinalFromConfig().check(fixture("LT-S09", "clear"));
+        assertTrue(f.isEmpty(), "expected no findings, got " + f);
+    }
+
+    // ---------------------------------------------------------------- LT-S10
+
+    @Test
+    @DisplayName("LT-S10 (unregistered, see Rules) still trips on an unchecked host gate")
+    void s10_trips_on_unchecked_host_gate() {
+        List<Finding> f = new NullDefaultedConfigGate().check(fixture("LT-S10", "trip"));
+        assertEquals(1, of(f, Verdict.TRIPPED).size(), f.toString());
+        assertTrue(f.get(0).detail().contains("every host"), f.get(0).detail());
+    }
+
+    @Test
+    @DisplayName("LT-S10 stays clear with a null check, and on an explicit non-null default")
+    void s10_null_check_clears_it() {
+        List<Finding> f = new NullDefaultedConfigGate().check(fixture("LT-S10", "clear"));
+        assertTrue(f.isEmpty(), "expected no findings, got " + f);
+    }
+
+    // ---------------------------------------------------------------- LT-S11
+
+    @Test
+    @DisplayName("LT-S11 trips on two scheduled methods with no pool configured")
+    void s11_trips_on_unsized_pool() {
+        List<Finding> f = new UnconfiguredSchedulerPool().check(fixture("LT-S11", "trip"));
+        assertEquals(1, of(f, Verdict.TRIPPED).size(), f.toString());
+        assertTrue(f.get(0).detail().contains("one thread"), f.get(0).detail());
+    }
+
+    @Test
+    @DisplayName("LT-S11 stays clear once the pool is sized, and never fires on a single job")
+    void s11_sized_pool_clears_it() {
+        assertTrue(new UnconfiguredSchedulerPool().check(fixture("LT-S11", "clear")).isEmpty());
+        // one scheduled method cannot starve anything
+        assertTrue(new UnconfiguredSchedulerPool().check(fixture("LT-S08", "trip")).isEmpty());
     }
 
     // ---------------------------------------------------------------- the red line

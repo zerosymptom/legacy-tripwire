@@ -13,7 +13,7 @@ Languages: English · [简体中文](README.zh-CN.md)
 Mostly a list: [**RULES.md**](RULES.md) — 40 rules, each with
 *symptom / mechanical check / why an AI can't catch it / false-positive boundary / verified date*.
 
-**Five of them are executable checks** ([`engine/`](engine/) — Java 17, no runtime dependencies).
+**Seven of them are executable checks** ([`engine/`](engine/) — Java 17, no runtime dependencies).
 The rest stay documentation: some are not written yet, and some **should never be mechanised**
 (see "How to use it").
 
@@ -160,7 +160,7 @@ reproducible** (the session pool keeps changing; a rerun yields a different corp
 
 ## The part that runs
 
-Five of the forty are **executable checks**, in [`engine/`](engine/):
+Seven of the forty are **executable checks**, in [`engine/`](engine/):
 
 ```bash
 cd engine && mvn -q package
@@ -174,6 +174,8 @@ java -jar target/tripwire.jar /path/to/your/checkout
 | **LT-P01** | a character above U+FFFF in the deployment descriptor — the container's parser fails, every path returns 500, nothing is logged |
 | **LT-S08** | a scheduled method with no top-level `catch (Throwable)` — the first throw drops the job from the scheduler for good, in silence |
 | **LT-S12** | an implementation missing from `META-INF/services` — it compiles, it is reviewed, and `ServiceLoader` never instantiates it |
+| **LT-S09** | a `static final` read from the config service — changing the value in the UI does nothing until a restart, and nothing says so |
+| **LT-S11** | two or more scheduled methods with an unsized pool — Spring's default scheduler runs one thread, so one slow run delays all the others |
 
 Run against 23 modules of a real decade-old Java estate: 20 tripped, zero `UNKNOWN`, and the
 55 LT-S08 findings were confirmed 55/55 by a second independently written checker.
