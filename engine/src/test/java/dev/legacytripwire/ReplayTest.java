@@ -183,6 +183,17 @@ class ReplayTest {
                 new UnregisteredSpiImplementation().scope(fixture("LT-S08", "clear")));
     }
 
+    @Test
+    @DisplayName("LT-S12 never matches one module's implementation against another's registry")
+    void s12_does_not_cross_module_boundaries() {
+        // Found by running the tool on its own checkout: a class under .../clear/ was reported
+        // as missing from the registry under .../trip/. In a real multi-module build that is
+        // every module accusing every other module, which is precisely the false-positive
+        // class this project refuses to ship.
+        List<Finding> f = new UnregisteredSpiImplementation().check(fixture("LT-S12", "twomodules"));
+        assertTrue(f.isEmpty(), "each module registers its own implementation: " + f);
+    }
+
     // ---------------------------------------------------------------- the red line
 
     @Test

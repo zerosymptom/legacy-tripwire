@@ -1,0 +1,7 @@
+# Deliberately broken inputs: the replay fixtures are the rules' test data, so every one of
+# them is supposed to trip. Scanning this repo from the root without excluding them reports
+# five findings against the tool's own test suite.
+#
+# ⛔ The exclusions are printed on every run — see engine/README.md. A tool that drops files
+# quietly is the failure this catalogue documents.
+engine/src/test/resources/replay

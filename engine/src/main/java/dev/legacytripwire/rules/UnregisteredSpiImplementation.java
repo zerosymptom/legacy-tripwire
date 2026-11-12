@@ -89,11 +89,34 @@ public final class UnregisteredSpiImplementation implements Rule {
         return out;
     }
 
-    private List<Finding> checkOne(Path root, Path registry, List<Path> sources) {
+    /**
+     * The module a registry governs: everything under the directory holding its source root.
+     *
+     * <p>Without this, a tree with two modules that each register the same interface produces
+     * cross-matches — module A's implementation reported as missing from module B's registry.
+     * Each registry only speaks for its own artifact.
+     */
+    private static Path moduleOf(Path registry) {
+        // …/<module>/src/main/resources/META-INF/services/<fqn>
+        Path p = registry;
+        for (int i = 0; i < 5 && p.getParent() != null; i++) {
+            p = p.getParent();
+        }
+        // p is now the source root's parent chain head; climb out of src/main/... if present.
+        Path q = p;
+        while (q != null && q.getFileName() != null && !q.getFileName().toString().equals("src")) {
+            q = q.getParent();
+        }
+        return q != null && q.getParent() != null ? q.getParent() : p;
+    }
+
+    private List<Finding> checkOne(Path root, Path registry, List<Path> allSources) {
         String iface = registry.getFileName().toString();
         int dot = iface.lastIndexOf('.');
         String simple = iface.substring(dot + 1);
         String pkg = iface.substring(0, dot);
+        Path module = moduleOf(registry);
+        List<Path> sources = allSources.stream().filter(s -> s.startsWith(module)).toList();
 
         Set<String> listed;
         try {
