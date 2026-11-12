@@ -111,6 +111,80 @@ Only `MECHANICAL` rules belong here. The catalogue also carries rules whose chec
 judgement call; those stay documentation. A false positive sends an agent to "fix" correct
 code, which costs more than the miss it prevents.
 
+## And on ten public repositories
+
+The numbers above come from one commercial estate, described generically because it has to be.
+Nobody can check them. So the same seven checks were run against **ten public Java
+applications** — pick any row, clone at that commit, and get the same answer in two minutes.
+
+Selection was fixed before the run: deployable applications (not libraries — five of the seven
+rules look for application patterns, so a sample of libraries would score zero and mean
+nothing), Maven, maintained, with four projects first committed 2012–2015 as an age contrast.
+
+| repository | commit | S01 | S04 | P01 | S08 | S12 | S09 | S11 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| [PowerJob/PowerJob](https://github.com/PowerJob/PowerJob) | `d92ad66277` | 0 | 0 | – | **3** | – | 0 | 0 |
+| [YunaiV/ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro) | `3e13d8ea90` | 0 | 0 | – | **3** | 0 | 0 | 0 |
+| [apache/dolphinscheduler](https://github.com/apache/dolphinscheduler) | `bae5e00691` | 0 | 0 | – | – | – | **7** | – |
+| [apache/zeppelin](https://github.com/apache/zeppelin) | `95b0ca5d2f` | 0 | 0 | 0 | – | – | 0 | – |
+| [codecentric/spring-boot-admin](https://github.com/codecentric/spring-boot-admin) | `dbb8872310` | 0 | 0 | – | – | – | 0 | – |
+| [elunez/eladmin](https://github.com/elunez/eladmin) | `646c58c30f` | **2** | 0 | – | – | – | 0 | – |
+| [linlinjava/litemall](https://github.com/linlinjava/litemall) | `a1ef964a71` | 0 | 0 | – | **4** | – | 0 | **1** |
+| [macrozheng/mall](https://github.com/macrozheng/mall) | `dcaa93b315` | 0 | 0 | – | **1** | – | 0 | – |
+| [openmrs/openmrs-core](https://github.com/openmrs/openmrs-core) | `6a2048e644` | 0 | 0 | 0 | **1** | 0 | 0 | – |
+| [spring-projects/spring-petclinic](https://github.com/spring-projects/spring-petclinic) | `500158f732` | 0 | 0 | – | – | – | – | – |
+| **total** / repos with the precondition | | **2**/10 | **0**/10 | **0**/2 | **12**/5 | **0**/2 | **7**/9 | **1**/3 |
+
+**`–` means the precondition is absent**, not clean: no `@Scheduled` in the tree, no
+`META-INF/services`, no deployment descriptor. Those cells carry no information and are not
+counted. `**n**` is a finding.
+
+### Three that were checked by hand against the source
+
+- **`elunez/eladmin`** (21.9k stars) — `<skipTests>true</skipTests>` sits inside the
+  surefire configuration in `eladmin-system/pom.xml`. `mvn test` reports success having run
+  zero tests, and `-DskipTests=false` does not override it.
+- **`apache/dolphinscheduler`** — `private static final String AZURE_CLIENT_ID =
+  PropertyUtils.getString(...)`, and three more beside it. Cloud credentials frozen at class
+  load; rotating them in configuration changes nothing until a restart, and nothing says so.
+- **`linlinjava/litemall`** — `@Scheduled` `checkCouponExpired()` queries the database with no
+  top-level `catch (Throwable)`. One throw and coupon expiry stops running for the life of the
+  process.
+
+### The result that matters most is a zero
+
+**LT-S04 found nothing, in all ten repositories, every one of which has test sources.** That is
+a zero with the precondition present ten times over — it carries information. In the commercial
+estate the same check found **12 test files** that compile, pass, and disappear on commit.
+
+So this rule is not describing Java. It is describing a particular engineering situation, and
+publishing the zero is what makes the rest of the catalogue narrower and more honest.
+
+### What was predicted, and what was wrong
+
+The interpretation rules were written and hashed **before the run**, including a prediction, so
+that nothing here could be decided after seeing the numbers. Two predictions were wrong:
+
+- *"LT-S09's precondition will be rare — open source rarely uses a config service."* It was
+  present in **9 of 10**.
+- *"LT-S11 will fire more widely than LT-S08."* It fired **once**; LT-S08 fired twelve times.
+
+Both errors ran the same way: the preconditions were far more common than expected. The
+overall shape — "two or three untested, one or two clean, two or three firing" — was also
+wrong; **nothing** was untested.
+
+### ⚠️ What this cannot support
+
+- **n = 10.** No significance is claimed and none should be read in.
+- The four older projects produced 1 finding and the six newer ones 21, which is the
+  **opposite** of the "legacy code is worse" direction. ⛔ Do not read that as an age effect:
+  the groups differ in governance, project type and review culture as well as age, and nothing
+  here isolates any of them.
+- **LT-S12 has now scored zero across 33 repositories** (23 commercial + these 10). It has
+  never matched outside its own fixtures.
+- Findings are not bugs until someone reads them. Three were checked by hand; the other
+  nineteen were not.
+
 ## The one we wrote and did not ship
 
 `LT-S10` is implemented, has both fixtures, and passes its tests. It is **not registered**, so
