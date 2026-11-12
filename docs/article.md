@@ -182,28 +182,44 @@ independently afterwards, and then we reconciled.
 
 ### The agreement number looked great, and the metric is hollow
 
-Entry-by-entry agreement: **81.3%** — almost exactly the 0.83 that study reports.
+Entry-by-entry agreement: **81.3%** — close to the 0.78 that study reports.
 
 Then I computed Cohen's κ. **0.296.**
 
 Here is the gap. Most of the 185 turns are ordinary; if two annotators both get "most of this is
-fine" right, raw agreement is high by construction. Once κ discounts that chance agreement,
-what is left is mediocre.
+fine" right, raw agreement is high by construction. Chance agreement alone works out to 0.735.
+Once κ discounts it, what is left is mediocre.
 
-That study reports raw agreement and **does not report κ**. So the next time you see
-"inter-annotator agreement 0.83", check which statistic it is — on a heavily imbalanced task,
-raw agreement is a very forgiving number.
+I first wrote this up as a hole in that study — it reports agreement, it does not report κ.
+Then I actually read the sentence. It says it reports percent agreement *rather than* Cohen's
+κ, and gives the reason: severe class imbalance. They called the shot. I had mistaken a stated
+caveat for an oversight, which is a good reminder that "the published work missed something
+obvious" is usually a reading error.
 
-### The disagreement, again, was "we weren't measuring the same thing"
+What is left is still worth something, just smaller: they said κ would mislead here, and this
+is what the distance actually measures out to on comparable material — 0.81 one way, 0.30 the
+other, on the same 166 items.
+
+### I thought I knew why we disagreed. I was wrong about that too
 
 24 to 7. I flagged more than twice as many misalignments as the model, and the skew was
 one-directional.
 
-Going through them one by one, it was the same shape as last time: **not strict versus lenient —
-we were measuring different things.**
+Reading them one by one, the explanation looked obvious and familiar: **not strict versus
+lenient — we were measuring different things.** The model measured "is there a visible
+correction in this turn," which is precisely how the public study defines it. I measured
+"**this task exists because something went wrong earlier**" — something it structurally could
+not see.
 
-The model measured "is there a visible correction in this turn" — which is precisely how the
-public study defines it. I measured "**this task exists because something went wrong earlier.**"
+That is a real distinction, and it is why the rework number below exists at all. But it is not
+the explanation for the κ, and I should have checked before saying it was. Recode every
+after-the-fact flag of mine to "fine" — leaving only the axis the model could actually see —
+and κ moves from 0.296 to **0.307**. Eleven thousandths. On that shared axis I flagged 24, it
+flagged 17, and we agreed on 8.
+
+So the honest version is the less tidy one: we disagree about what counts as a failure, and I
+do not yet have a clean account of why. Saying "we were measuring different things" let me file
+that away as solved. It wasn't.
 
 The evidence is blunt: a third of what I flagged were kickoff instructions — "do X" — with not
 one word of correction in them. But my notes on those read: "it couldn't see what the page

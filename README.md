@@ -112,10 +112,17 @@ seven symptom categories plus a per-turn misalignment baseline).
 
 **Two findings you can take away directly:**
 
-1. 🔴 **Treat "0.83 inter-annotator agreement" claims with care — check which statistic it is.**
-   Our raw agreement was 81.3%, essentially matching the 0.83 the public study reports;
-   but κ was only 0.296. On a heavily imbalanced binary task, raw agreement is a very
-   forgiving metric — and that study does not report κ.
+1. 🔴 **An agreement figure near 0.8 and a κ near 0.3 can describe the same labelling.**
+   Our raw agreement was 81.3%, close to the 0.78 that study reports; our κ was 0.296.
+   On a task where positives are rare, chance agreement alone was 0.735 here, so two
+   annotators can agree on four items in five while sharing almost no view of what counts
+   as a failure. That study states plainly that it reports percent agreement **rather than**
+   Cohen's κ, because of severe class imbalance — so this is not an oversight being pointed
+   out. It is what that stated caveat turns out to look like once someone measures it.
+   We also checked the obvious alternative explanation — that the two annotators were
+   measuring different things — and it does not hold: aligning the task definition moves
+   κ from 0.296 to 0.307. The labels in
+   [tripwire-corpus](https://github.com/zerosymptom/tripwire-corpus) let you redo this.
 2. 🔴 **The public taxonomy has an empty slot.** It has "misreports the status of its own work,"
    but no category covers **fabricating a fact inside the produced content**.
    The opening story in this repo's article originally cited a fabricated duration
