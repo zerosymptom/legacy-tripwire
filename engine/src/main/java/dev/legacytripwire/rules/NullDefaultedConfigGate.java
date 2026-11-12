@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * to decide whether this machine should do the work.
  *
  * <pre>{@code
- * String host = Config.getString("local.ip", null);
+ * String host = Config.getString("scheduler.host", null);
  * if (!localAddresses.contains(host)) return;     // host == null -> false on every machine
  * }</pre>
  *
