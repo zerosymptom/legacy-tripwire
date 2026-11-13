@@ -174,7 +174,7 @@ java -jar target/tripwire.jar /path/to/your/checkout
 | **LT-S01** | a literal skip-tests in the build config outranks the command line — `mvn test` reports success having run 0 tests |
 | **LT-S04** | version control ignores the test directory — tests compile, run, pass, then vanish on commit |
 | **LT-P01** | a character above U+FFFF in the deployment descriptor — the container's parser fails, every path returns 500, nothing is logged |
-| **LT-S08** | a scheduled method with no top-level `catch (Throwable)` — the first throw drops the job from the scheduler for good, in silence |
+| **LT-S08** | a scheduled method with no top-level `catch (Throwable)` — ⚠️ consequence partly retracted, see below |
 | **LT-S12** | an implementation missing from `META-INF/services` — it compiles, it is reviewed, and `ServiceLoader` never instantiates it |
 | **LT-S09** | a `static final` read from the config service — changing the value in the UI does nothing until a restart, and nothing says so |
 | **LT-S11** | two or more scheduled methods with an unsized pool — Spring's default scheduler runs one thread, so one slow run delays all the others |
@@ -183,6 +183,25 @@ Run against 23 modules of a real decade-old Java estate: 20 tripped, zero `UNKNO
 55 LT-S08 findings were confirmed 55/55 by a second independently written checker.
 Full table and the two caveats that matter — why 55 is also 34, and why **LT-S12 has never
 matched outside its own fixtures** — in [`engine/README.md`](engine/README.md).
+
+⚠️ **Retracted in part, 2026-11-13 — LT-S08's stated consequence is wrong for the mechanism the
+checker actually matches.** The rule says a throwing scheduled method is dropped from the
+scheduler for good, in silence. That is true of a bare `ScheduledExecutorService` and **false of
+Spring `@Scheduled`**, which is what the check matches: Spring wraps repeating tasks in
+`DelegatingErrorHandlingRunnable` with `LOG_AND_SUPPRESS_ERROR_HANDLER`, so the exception never
+reaches the executor. Measured on Spring 5.3.39 / JDK 21, a `@Scheduled(fixedDelay = 300)` that
+throws every time ran **10 times in 3 seconds and logged a stack trace at SEVERE on each one**;
+the bare-executor control ran **once, silently**.
+
+Every LT-S08 finding published here — **12 across 5 public repositories, 55 across the commercial
+estate** — is therefore a valid *pattern* match reported with an invalid consequence. The two
+checkers that agreed 55/55 agreed that the pattern was present; neither tested that the stated
+outcome was real. ⛔ Do not read those findings as "this job will stop forever". Re-scoping the
+check to bare `ScheduledExecutorService` is open work. Details in
+[`RULES.md`](RULES.md#lt-s08-an-exception-in-a-scheduled-method-stops-that-task-forever).
+
+The general lesson is in [`METHOD.md`](METHOD.md): a replay fixture proves the checker detects the
+pattern, and nothing in the process ever asked whether the consequence attached to it was true.
 
 Two deliberate design choices:
 

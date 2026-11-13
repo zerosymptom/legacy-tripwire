@@ -97,6 +97,28 @@ Two more things this project learned the hard way:
   when it could not tell is one more instance of the bug it was written to catch. Here,
   "cannot decide" is a non-zero exit code.
 
+🔴 **The hole this step does not cover, added 2026-11-13 after it cost us a rule.**
+
+A replay fixture proves the checker **detects the pattern**. It says nothing about whether the
+**consequence attached to that pattern is real** — and the consequence is the entire reason
+anyone would act on a finding.
+
+LT-S08 had both fixtures, passed its tests, was re-derived by a second independently written
+checker that agreed 55/55, and had shipped 67 findings before anyone ran the obvious experiment:
+write a scheduled method that throws, and watch whether it stops. It does not. Spring catches and
+logs it; only a bare `ScheduledExecutorService` behaves as the rule claimed. Two checkers
+agreeing is two measurements of the same thing — the match — and no measurement at all of the
+claim.
+
+So, as a step of its own: **for any rule that asserts "and then X happens", build the smallest
+program that would show X, and run it.** Minutes, in this case. If X cannot be demonstrated,
+the rule may still be worth keeping as a pattern, but ⛔ its consequence must be written down as
+untested rather than as fact.
+
+⚠️ Note the asymmetry with step 4: there, density vetoes a *criterion* that matches too much.
+There was no equivalent gate on a *claim* that explains too much, and claims are what readers
+act on.
+
 ## 6. Run it on material you do not control — and publish the zeros
 
 Everything up to here is one person's corpus. The number that convinces nobody is the one

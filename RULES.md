@@ -119,6 +119,39 @@ This is the hardest class for an agent to self-check — all it can see is an ex
 - **Fix**: outermost `try/catch(Throwable)` + `log.error`. ⛔ Never rethrow.
 - `verified` 2026-09-11
 
+⚠️ **Retracted in part, 2026-11-13 — the consequence above does not hold for Spring `@Scheduled`,
+which is what the engine actually matches.**
+
+Spring does not hand the task to the executor bare. `ThreadPoolTaskScheduler` and
+`ConcurrentTaskScheduler` both wrap a repeating task via
+`TaskUtils.decorateTaskWithErrorHandler(task, null, /* isRepeatingTask */ true)`, which installs
+`LOG_AND_SUPPRESS_ERROR_HANDLER`. The exception is caught inside
+`DelegatingErrorHandlingRunnable` and never reaches the executor, so the task is **not** cancelled
+and the throw is **not** silent.
+
+Measured, Spring 5.3.39 / JDK 21, a `@Scheduled(fixedDelay = 300)` method that throws on every
+invocation, observed for 3 seconds:
+
+| scheduling mechanism | executions in 3s | logged? |
+|---|---:|---|
+| Spring `@Scheduled(fixedDelay)` | **10** | yes — `SEVERE: Unexpected error occurred in scheduled task`, with stack trace, every time |
+| bare `ScheduledExecutorService.scheduleWithFixedDelay` | **1** | no |
+
+So both halves of the original claim — *removed from the schedule for good*, and *in silence* —
+are **true for a bare `ScheduledExecutorService` and false for Spring `@Scheduled`**.
+
+What this costs: the engine's `LT-S08` check matches `@Scheduled` methods, so every finding it has
+ever reported is against the mechanism where the consequence does not apply — **12 findings across
+5 public repositories and 55 across the commercial estate**. The findings are real as *pattern*
+matches (those methods genuinely have no top-level guard, and swallowing-and-logging is still
+better practice), but ⛔ **they must not be read as "this job will stop forever".** Re-scoping the
+check to bare `ScheduledExecutorService` is open work, not done here.
+
+This also exposes a gap in the method: a fixture proves the checker *detects the pattern*; nothing
+in the process ever required proving the *stated consequence* was real. See `METHOD.md`.
+
+- `verified` 2026-11-13 (consequence re-measured; see retraction above)
+
 ### LT-S09 A `static final` field reading remote config makes hot reload permanently ineffective
 
 - **Symptom**: you change the value in the config centre, publish it, and **nothing happens**.

@@ -104,6 +104,33 @@ AI 能看到的只有退出码和 `BUILD SUCCESS`。
 - **修法**：最外层 `try/catch(Throwable)` + `log.error`，⛔ 不向上抛。
 - `verified` 2026-09-11
 
+⚠️ **部分撤回，2026-11-13 —— 上面那条后果对 Spring `@Scheduled` 不成立，而引擎匹配的正是 `@Scheduled`。**
+
+Spring 不会把任务裸交给 executor。`ThreadPoolTaskScheduler` 与 `ConcurrentTaskScheduler` 都会对重复任务
+调用 `TaskUtils.decorateTaskWithErrorHandler(task, null, /* isRepeatingTask */ true)`，装上
+`LOG_AND_SUPPRESS_ERROR_HANDLER`。异常在 `DelegatingErrorHandlingRunnable` 内部就被捕获，根本到不了
+executor —— 任务**不会**被取消，抛出也**不是**静默的。
+
+实测，Spring 5.3.39 / JDK 21，一个每次都抛异常的 `@Scheduled(fixedDelay = 300)` 方法，观察 3 秒：
+
+| 调度机制 | 3 秒内执行次数 | 有无日志 |
+|---|---:|---|
+| Spring `@Scheduled(fixedDelay)` | **10** | 有 —— 每次 `SEVERE: Unexpected error occurred in scheduled task`，带完整堆栈 |
+| 裸 `ScheduledExecutorService.scheduleWithFixedDelay` | **1** | 无 |
+
+所以原条目的两个半句 —— *被永久移出调度*、*没有任何日志* —— **对裸 `ScheduledExecutorService` 成立，
+对 Spring `@Scheduled` 不成立**。
+
+代价：引擎的 `LT-S08` 检查匹配的是 `@Scheduled` 方法，因此它报出过的每一条命中，都落在后果并不适用的那套机制上
+—— **公开仓 5 个仓共 12 处，商用那套 55 处**。这些命中作为**模式**匹配仍然为真（那些方法确实没有最外层兜底，
+而吞掉并记日志仍是更好的写法），但 ⛔ **不得再读作「这个任务会永久停跑」**。把检查目标重新界定到裸
+`ScheduledExecutorService` 是未完成的工作，本次未做。
+
+这同时暴露了方法论上的一个缺口：回放用例只证明了检查器**认得出这个模式**，流程里从来没有任何一步要求证明
+**它声称的后果为真**。见 `METHOD.md`。
+
+- `verified` 2026-11-13（后果已重新实测，见上方撤回）
+
 ### LT-S09 `static final` 字段读配置中心，热更新永远无效
 
 - **症状**：在配置中心改了值，重新发布配置，**什么也没发生**；重启进程后才生效。

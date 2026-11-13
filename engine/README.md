@@ -62,7 +62,7 @@ resolved from the file alone.
 | **LT-S01** | a literal skip-tests in the build config outranks `-DskipTests=false`; `mvn test` reports success having run 0 tests | parses every `pom.xml`; literal `true` inside the surefire/failsafe configuration. A property reference (`${skipTests}`) or a `<properties>` default is **not** this rule — those stay overridable |
 | **LT-S04** | version control ignores the test sources; they compile, run, pass, and vanish on commit | shells out to `git check-ignore -v` for each test source. We do not reimplement ignore semantics — an approximation would produce exactly the confidently-wrong answer this project exists to prevent |
 | **LT-P01** | a character above U+FFFF in the deployment descriptor; the container's parser rejects it, every path returns 500, and nothing is logged | scans `web.xml` and `WEB-INF/*.xml` for code points `> 0xFFFF`. BMP symbols (`⛔ ⚠ ★`) and CJK are fine |
-| **LT-S08** | a scheduled method whose body has no top-level `catch (Throwable)`; the first throw removes the task from the scheduler for the life of the process, logging nothing | masks strings and comments, then brace-matches the method body. A `catch` that covers only part of the body, or catches narrower than `Throwable`, still trips — an `Error` cancels the task just as permanently |
+| **LT-S08** | a scheduled method whose body has no top-level `catch (Throwable)`. ⚠️ The consequence this rule used to state — removed from the scheduler for good, logging nothing — is **retracted for Spring `@Scheduled`, which is what this check matches**; see the retraction below | masks strings and comments, then brace-matches the method body. A `catch` that covers only part of the body, or catches narrower than `Throwable`, still trips |
 | **LT-S12** | a class implementing an SPI interface that nobody added to `META-INF/services/<fqn>`; it compiles, it reviews, and `ServiceLoader` never instantiates it | reads each registry file and matches implementations that are in the interface's package or import it by name. ⚠️ A class inheriting the interface through a base class is **not** detected — resolving that needs a type graph |
 | **LT-S09** | a `static final` field initialised from the config service; changing the value in the UI does nothing until a restart, and nothing says so | matches a config-shaped receiver plus a value-returning read. ⚠️ `getInstance` / `getBean` are excluded — freezing a singleton is correct, and including them produced 42 findings against code that was fine |
 | **LT-S11** | two or more scheduled methods with an unsized pool; Spring's default `TaskScheduler` runs **one** thread, so one slow run delays all the others | counts scheduled entry points, then looks for any way the pool is sized. One finding per checkout, not per method. Never fires on a single job |
@@ -85,6 +85,30 @@ Run across **23 modules** of a commercial Java estate (four product lines, rough
 20 of 23 modules tripped something. **Zero `UNKNOWN`.** All 55 LT-S08 findings were re-derived by
 a second, independently written checker: **55/55 agreed, no false positives**.
 
+⚠️ **Retracted in part, 2026-11-13 — what those two checkers agreed on was the pattern, not the
+consequence.** LT-S08 matches Spring `@Scheduled` methods, and Spring does **not** cancel a
+repeating task that throws: `ThreadPoolTaskScheduler` / `ConcurrentTaskScheduler` wrap it via
+`TaskUtils.decorateTaskWithErrorHandler(task, null, true)` with `LOG_AND_SUPPRESS_ERROR_HANDLER`,
+so the throw is caught inside `DelegatingErrorHandlingRunnable` and never reaches the executor.
+
+Measured, Spring 5.3.39 / JDK 21, a `@Scheduled(fixedDelay = 300)` throwing on every invocation,
+observed 3 seconds:
+
+| scheduling mechanism | executions in 3s | logged? |
+|---|---:|---|
+| Spring `@Scheduled(fixedDelay)` | **10** | yes — `SEVERE` + stack trace, every time |
+| bare `ScheduledExecutorService.scheduleWithFixedDelay` | **1** | no |
+
+The "removed for the life of the process, in silence" behaviour belongs to the bare executor.
+So all LT-S08 counts in this file — **55 here and 12 on the public repositories** — are
+pattern-present counts whose attached consequence does not apply. The methods really do lack a
+top-level guard, and guarding plus logging is still the better shape, but ⛔ these numbers must
+not be quoted as jobs that stopped. Re-pointing the check at bare `ScheduledExecutorService`
+is open work and has not been done.
+
+A second checker reproducing the first does not test the claim; it tests the match. That gap is
+process-level, not specific to this rule.
+
 ⚠️ **Two numbers, not one.** The 55 and the 34 differ because three product lines ship copies of
 the same files; each copy is a separate running service, so 55 is the operational count and 34
 the distinct-defect count. Quoting 55 as "distinct bugs" would be inflation, and the inflation
@@ -93,7 +117,8 @@ is 62%.
 ⚠️ **LT-S12 has never matched outside its own fixtures.** Zero hits across all 23 modules. The
 pattern it encodes is real — it cost a real investigation, which is why it is in the catalogue —
 but **the check itself is unproven in the field**, and it should not be read as carrying the same
-weight as LT-S01 or LT-S08. LT-P01 also scored zero here; that one has a known field incident
+weight as LT-S01. (It was compared against LT-S08 here before LT-S08's own consequence was
+retracted — LT-S08 is no longer the right benchmark.) LT-P01 also scored zero here; that one has a known field incident
 behind it, the condition simply is not present in these modules today.
 
 ## Adding a rule
