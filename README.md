@@ -174,7 +174,7 @@ java -jar target/tripwire.jar /path/to/your/checkout
 | **LT-S01** | a literal skip-tests in the build config outranks the command line — `mvn test` reports success having run 0 tests |
 | **LT-S04** | version control ignores the test directory — tests compile, run, pass, then vanish on commit |
 | **LT-P01** | a character above U+FFFF in the deployment descriptor — the container's parser fails, every path returns 500, nothing is logged |
-| **LT-S08** | a scheduled method with no top-level `catch (Throwable)` — ⚠️ consequence partly retracted, see below |
+| **LT-S08** | a periodic task on a bare `ScheduledExecutorService` with no top-level `catch (Throwable)` — the first throw suppresses every later execution, in silence. ⚠️ Spring `@Scheduled` is explicitly *not* this; see the re-scoping below |
 | **LT-S12** | an implementation missing from `META-INF/services` — it compiles, it is reviewed, and `ServiceLoader` never instantiates it |
 | **LT-S09** | a `static final` read from the config service — changing the value in the UI does nothing until a restart, and nothing says so |
 | **LT-S11** | two or more scheduled methods with an unsized pool — Spring's default scheduler runs one thread, so one slow run delays all the others |
@@ -193,12 +193,20 @@ reaches the executor. Measured on Spring 5.3.39 / JDK 21, a `@Scheduled(fixedDel
 throws every time ran **10 times in 3 seconds and logged a stack trace at SEVERE on each one**;
 the bare-executor control ran **once, silently**.
 
-Every LT-S08 finding published here — **12 across 5 public repositories, 55 across the commercial
-estate** — is therefore a valid *pattern* match reported with an invalid consequence. The two
-checkers that agreed 55/55 agreed that the pattern was present; neither tested that the stated
-outcome was real. ⛔ Do not read those findings as "this job will stop forever". Re-scoping the
-check to bare `ScheduledExecutorService` is open work. Details in
-[`RULES.md`](RULES.md#lt-s08-an-exception-in-a-scheduled-method-stops-that-task-forever).
+Every LT-S08 finding published before that date — **12 across the public repositories, 55 across
+the commercial estate** — was therefore a valid *pattern* match reported with an invalid
+consequence. The two checkers that agreed 55/55 agreed that the pattern was present; neither
+tested that the stated outcome was real. ⛔ Those numbers are withdrawn.
+
+**The check has since been re-pointed at the bare JDK executor and both populations re-run the
+same day.** The two rules select almost disjoint code: on the public repositories 12 → **24**,
+with every litemall / mall / openmrs finding gone and every zeppelin / dolphinscheduler finding
+new. On the commercial estate, re-run across 76 modules, the old rule finds **120** and the new
+one finds **2** — the idiom that carries the consequence is close to absent there, and one of
+the two is vendored third-party code. Full tables, and the six findings read back against
+source by hand, in [`engine/README.md`](engine/README.md).
+
+Rule text: [`RULES.md`](RULES.md#lt-s08-an-exception-in-a-periodic-task-on-a-bare-scheduledexecutorservice-stops-it-forever).
 
 The general lesson is in [`METHOD.md`](METHOD.md): a replay fixture proves the checker detects the
 pattern, and nothing in the process ever asked whether the consequence attached to it was true.

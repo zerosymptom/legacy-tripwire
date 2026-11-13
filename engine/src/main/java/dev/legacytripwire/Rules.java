@@ -4,7 +4,7 @@ import dev.legacytripwire.rules.GitignoredTests;
 import dev.legacytripwire.rules.NonBmpInContainerXml;
 import dev.legacytripwire.rules.SkipTestsLiteral;
 import dev.legacytripwire.rules.StaticFinalFromConfig;
-import dev.legacytripwire.rules.UnguardedScheduledMethod;
+import dev.legacytripwire.rules.UnguardedPeriodicExecutorTask;
 import dev.legacytripwire.rules.UnconfiguredSchedulerPool;
 import dev.legacytripwire.rules.UnregisteredSpiImplementation;
 
@@ -34,7 +34,7 @@ public final class Rules {
                 new SkipTestsLiteral(),
                 new GitignoredTests(),
                 new NonBmpInContainerXml(),
-                new UnguardedScheduledMethod(),
+                new UnguardedPeriodicExecutorTask(),
                 new UnregisteredSpiImplementation(),
                 new StaticFinalFromConfig(),
                 new UnconfiguredSchedulerPool());

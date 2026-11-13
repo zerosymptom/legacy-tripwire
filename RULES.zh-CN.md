@@ -96,15 +96,22 @@ AI 能看到的只有退出码和 `BUILD SUCCESS`。
   **同时**顺着该字段的取值方法找 `if (isBlank(cfg)) return null;` 这类早退分支。
 - `verified` 2026-09-09
 
-### LT-S08 定时方法抛异常 = 该任务永久停止调度
+### LT-S08 裸 ScheduledExecutorService 上的周期任务抛异常 = 永久停止调度
 
-- **症状**：某个定时任务「这个月没跑」，之后再也不跑，**没有任何日志**。
-- **判据** `MECHANICAL`：定时入口方法体最外层没有 `catch (Throwable)`。
-- **根因**：`ScheduledThreadPoolExecutor` 的既有行为 —— 任务抛出异常后该任务被移出调度队列，静默。
+- **症状**：某个周期任务「这个月没跑」，之后再也不跑，**没有任何日志**。
+- **判据** `MECHANICAL`：接收者声明为 `ScheduledExecutorService` / `ScheduledThreadPoolExecutor` 的
+  `scheduleAtFixedRate` / `scheduleWithFixedDelay` 调用，其任务体最外层没有 `catch (Throwable)`。
+- **根因**：`ScheduledThreadPoolExecutor` 文档明写 —— *"If any execution of the task encounters an
+  exception, subsequent executions are suppressed."* 异常被塞进没人保留的 `ScheduledFuture` 里。
 - **修法**：最外层 `try/catch(Throwable)` + `log.error`，⛔ 不向上抛。
-- `verified` 2026-09-11
+- **假阳性边界**：⛔ **Spring 的 `@Scheduled` 与 `TaskScheduler` 不属于本条** —— Spring 会包装重复任务，
+  异常到不了 executor。XXL-Job、ElasticJob 同样会捕获并上报。只有裸 JDK executor 是这个行为。
+- ⛔ **未覆盖**：`java.util.Timer`。`TimerTask` 抛异常会杀掉整个 timer 线程、连带它上面所有任务 ——
+  更糟的一个变种，属于另一条尚不存在的规则。
+- `verified` 2026-11-13（后果已直接实测，见下）
 
-⚠️ **部分撤回，2026-11-13 —— 上面那条后果对 Spring `@Scheduled` 不成立，而引擎匹配的正是 `@Scheduled`。**
+⚠️ **已重新界定，2026-11-13。它此前匹配 `@Scheduled` / `@XxlJob` / `@ElasticJob` 并声称上述后果，
+而实测表明该后果对这三者都不成立。**
 
 Spring 不会把任务裸交给 executor。`ThreadPoolTaskScheduler` 与 `ConcurrentTaskScheduler` 都会对重复任务
 调用 `TaskUtils.decorateTaskWithErrorHandler(task, null, /* isRepeatingTask */ true)`，装上
@@ -121,15 +128,17 @@ executor —— 任务**不会**被取消，抛出也**不是**静默的。
 所以原条目的两个半句 —— *被永久移出调度*、*没有任何日志* —— **对裸 `ScheduledExecutorService` 成立，
 对 Spring `@Scheduled` 不成立**。
 
-代价：引擎的 `LT-S08` 检查匹配的是 `@Scheduled` 方法，因此它报出过的每一条命中，都落在后果并不适用的那套机制上
-—— **公开仓 5 个仓共 12 处，商用那套 55 处**。这些命中作为**模式**匹配仍然为真（那些方法确实没有最外层兜底，
-而吞掉并记日志仍是更好的写法），但 ⛔ **不得再读作「这个任务会永久停跑」**。把检查目标重新界定到裸
-`ScheduledExecutorService` 是未完成的工作，本次未做。
+代价：此日期之前发布过的每一条 LT-S08 命中 —— 公开仓 12 处、商用那套 55 处 ——
+都是「模式匹配为真、所附后果不适用于被匹配的机制」。⛔ 这些数字是**作废**，不是加个注脚。
+它们只作为重新界定的「改前」一列保留在 `engine/README.md` 里，不再作为命中。
+
+**随后检查目标已改指裸 JDK executor，并在同一天把两个总体都重跑了一遍。**
+结果是新旧两条规则选中的代码几乎**不相交**，表见 [`engine/README.md`](engine/README.md)：
+框架注解聚集在 CRUD 形态的业务应用里，裸 `ScheduledExecutorService` 聚集在平台与基础设施代码里。
+所以重新界定不是对旧命中做了一次过滤 —— 它换掉了整个总体。
 
 这同时暴露了方法论上的一个缺口：回放用例只证明了检查器**认得出这个模式**，流程里从来没有任何一步要求证明
-**它声称的后果为真**。见 `METHOD.md`。
-
-- `verified` 2026-11-13（后果已重新实测，见上方撤回）
+**它声称的后果为真**。见 [`METHOD.zh-CN.md`](METHOD.zh-CN.md)。
 
 ### LT-S09 `static final` 字段读配置中心，热更新永远无效
 

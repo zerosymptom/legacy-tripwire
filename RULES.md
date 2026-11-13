@@ -110,17 +110,25 @@ This is the hardest class for an agent to self-check — all it can see is an ex
   getter for an early `if (isBlank(cfg)) return null;`.
 - `verified` 2026-09-09
 
-### LT-S08 An exception in a scheduled method stops that task forever
+### LT-S08 An exception in a periodic task on a bare `ScheduledExecutorService` stops it forever
 
-- **Symptom**: a scheduled job "didn't run this month", and never runs again. **No log output at all.**
-- **Check** `MECHANICAL`: the scheduled entry method has no outermost `catch (Throwable)`.
-- **Root cause**: standard `ScheduledThreadPoolExecutor` behaviour — a throwing task is removed from
-  the schedule, silently.
+- **Symptom**: a periodic job "didn't run this month", and never runs again. **No log output at all.**
+- **Check** `MECHANICAL`: a `scheduleAtFixedRate` / `scheduleWithFixedDelay` call on a receiver
+  declared as `ScheduledExecutorService` / `ScheduledThreadPoolExecutor`, whose task body has no
+  outermost `catch (Throwable)`.
+- **Root cause**: `ScheduledThreadPoolExecutor` documents it — *"If any execution of the task
+  encounters an exception, subsequent executions are suppressed."* The throwable is parked in a
+  `ScheduledFuture` nobody kept.
 - **Fix**: outermost `try/catch(Throwable)` + `log.error`. ⛔ Never rethrow.
-- `verified` 2026-09-11
+- **False-positive boundary**: ⛔ **Spring `@Scheduled` and Spring's `TaskScheduler` are NOT this
+  rule** — Spring decorates repeating tasks and the throw never reaches the executor. Same for
+  XXL-Job and ElasticJob, which catch and report. Only the bare JDK executor behaves this way.
+- ⛔ **Not covered**: `java.util.Timer`. A `TimerTask` that throws kills the timer thread and every
+  other task on it — a worse variant, and a separate rule that does not exist yet.
+- `verified` 2026-11-13 (consequence measured directly; see below)
 
-⚠️ **Retracted in part, 2026-11-13 — the consequence above does not hold for Spring `@Scheduled`,
-which is what the engine actually matches.**
+⚠️ **Re-scoped 2026-11-13. It previously matched `@Scheduled` / `@XxlJob` / `@ElasticJob` and
+claimed the consequence above, which measurement showed to be false for all three.**
 
 Spring does not hand the task to the executor bare. `ThreadPoolTaskScheduler` and
 `ConcurrentTaskScheduler` both wrap a repeating task via
@@ -140,17 +148,20 @@ invocation, observed for 3 seconds:
 So both halves of the original claim — *removed from the schedule for good*, and *in silence* —
 are **true for a bare `ScheduledExecutorService` and false for Spring `@Scheduled`**.
 
-What this costs: the engine's `LT-S08` check matches `@Scheduled` methods, so every finding it has
-ever reported is against the mechanism where the consequence does not apply — **12 findings across
-5 public repositories and 55 across the commercial estate**. The findings are real as *pattern*
-matches (those methods genuinely have no top-level guard, and swallowing-and-logging is still
-better practice), but ⛔ **they must not be read as "this job will stop forever".** Re-scoping the
-check to bare `ScheduledExecutorService` is open work, not done here.
+What it cost: every LT-S08 finding published before this date — 12 across the public repositories
+and 55 across the commercial estate — was a pattern match carrying a consequence that does not
+apply to the mechanism matched. ⛔ Those numbers are withdrawn, not merely annotated. They are
+kept in `engine/README.md` only as the before-column of the re-scoping, never as findings.
+
+**The check was then re-pointed at the bare JDK executor and both populations re-run on the same
+day.** The two rules turn out to select almost disjoint sets of code: see the tables in
+[`engine/README.md`](engine/README.md). Framework annotations cluster in CRUD-shaped applications;
+raw `ScheduledExecutorService` clusters in platform and infrastructure code. Re-scoping was
+therefore not a filter on the old findings — it replaced the population.
 
 This also exposes a gap in the method: a fixture proves the checker *detects the pattern*; nothing
-in the process ever required proving the *stated consequence* was real. See `METHOD.md`.
-
-- `verified` 2026-11-13 (consequence re-measured; see retraction above)
+in the process ever required proving the *stated consequence* was real. See
+[`METHOD.md`](METHOD.md).
 
 ### LT-S09 A `static final` field reading remote config makes hot reload permanently ineffective
 

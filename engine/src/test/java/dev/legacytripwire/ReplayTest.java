@@ -6,7 +6,7 @@ import dev.legacytripwire.rules.NullDefaultedConfigGate;
 import dev.legacytripwire.rules.SkipTestsLiteral;
 import dev.legacytripwire.rules.StaticFinalFromConfig;
 import dev.legacytripwire.rules.UnconfiguredSchedulerPool;
-import dev.legacytripwire.rules.UnguardedScheduledMethod;
+import dev.legacytripwire.rules.UnguardedPeriodicExecutorTask;
 import dev.legacytripwire.rules.UnregisteredSpiImplementation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -121,28 +121,45 @@ class ReplayTest {
     // ---------------------------------------------------------------- LT-S08
 
     @Test
-    @DisplayName("LT-S08 trips on a scheduled method with no top-level guard")
+    @DisplayName("LT-S08 trips on a bare ScheduledExecutorService task with no top-level guard")
     void s08_trips_on_unguarded_job() {
-        List<Finding> f = new UnguardedScheduledMethod().check(fixture("LT-S08", "trip"));
-        assertEquals(1, of(f, Verdict.TRIPPED).size(), f.toString());
-        assertTrue(f.get(0).detail().contains("removes this task from the scheduler"),
-                f.get(0).detail());
+        List<Finding> f = new UnguardedPeriodicExecutorTask().check(fixture("LT-S08", "trip"));
+        assertEquals(3, of(f, Verdict.TRIPPED).size(), f.toString());
+        assertTrue(f.toString().contains("no top-level try/catch (Throwable)"), f.toString());
+        // catch (Exception) is not a guard here: an Error suppresses the schedule just the same.
+        assertTrue(f.toString().contains("narrower than Throwable"), f.toString());
     }
 
     @Test
-    @DisplayName("LT-S08 stays clear on catch (Throwable), on unscheduled methods, and on a brace in a string")
+    @DisplayName("LT-S08 stays clear on catch (Throwable), on Spring's TaskScheduler, on @Scheduled, and on a brace in a string")
     void s08_respects_the_false_positive_boundary() {
-        // All three shapes share one fixture so a regression on any of them fails here rather
-        // than on someone else's repository. The brace-in-a-string case is the one that would
-        // silently shift every later method boundary if the masking broke.
-        List<Finding> f = new UnguardedScheduledMethod().check(fixture("LT-S08", "clear"));
+        // These shapes share one fixture so a regression on any of them fails here rather than on
+        // someone else's repository. Two of them are the reason this rule was re-scoped on
+        // 2026-11-13: Spring decorates the task (DelegatingErrorHandlingRunnable), so neither
+        // @Scheduled nor TaskScheduler carries the consequence this rule reports.
+        List<Finding> f = new UnguardedPeriodicExecutorTask().check(fixture("LT-S08", "clear"));
         assertTrue(f.isEmpty(), "expected no findings, got " + f);
     }
 
     @Test
-    @DisplayName("LT-S08 counts the scheduled methods it examined, not the files")
+    @DisplayName("LT-S08 is UNKNOWN, never CLEAR, when the receiver is not declared in the file")
+    void s08_unresolvable_receiver_is_unknown(@TempDir Path tmp) throws Exception {
+        // scheduleAtFixedRate exists on both java.util.concurrent and Spring's TaskScheduler.
+        // With no declaration in sight the two cannot be told apart, and answering CLEAR would be
+        // the failure this catalogue is about.
+        Path dir = Files.createDirectories(tmp.resolve("src"));
+        Files.writeString(dir.resolve("Inherited.java"),
+                "class Inherited { void go() { scheduler.scheduleAtFixedRate(() -> work(), 1000L); } }");
+        List<Finding> f = new UnguardedPeriodicExecutorTask().check(dir);
+        assertEquals(1, of(f, Verdict.UNKNOWN).size(), f.toString());
+        assertEquals(0, of(f, Verdict.TRIPPED).size(), f.toString());
+    }
+
+    @Test
+    @DisplayName("LT-S08 counts the periodic schedulings it examined, not the files")
     void s08_reports_its_scope() {
-        assertEquals("1 scheduled methods", new UnguardedScheduledMethod().scope(fixture("LT-S08", "trip")));
+        assertEquals("3 periodic schedulings",
+                new UnguardedPeriodicExecutorTask().scope(fixture("LT-S08", "trip")));
     }
 
     @Test
@@ -154,9 +171,9 @@ class ReplayTest {
         Path dir = Files.createDirectories(tmp.resolve("legacy"));
         Files.write(dir.resolve("TaskSchedule.java"),
                 new byte[] {'@', 'S', 'c', 'h', 'e', 'd', 'u', 'l', 'e', 'd', '\n', (byte) 0xC4, (byte) 0xE3});
-        List<Finding> f = new UnguardedScheduledMethod().check(dir);
+        List<Finding> f = new UnguardedPeriodicExecutorTask().check(dir);
         assertEquals(1, of(f, Verdict.UNKNOWN).size(), "must be UNKNOWN, not a silent skip: " + f);
-        assertTrue(new UnguardedScheduledMethod().scope(dir).contains("not readable as UTF-8"),
+        assertTrue(new UnguardedPeriodicExecutorTask().scope(dir).contains("not readable as UTF-8"),
                 "the scope line has to admit what it could not read");
     }
 

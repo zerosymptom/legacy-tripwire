@@ -23,7 +23,7 @@ rules: 7   findings: 0
   LT-S01  examined 6 pom.xml
   LT-S04  examined 22 test sources
   LT-P01  examined 0 deployment descriptors
-  LT-S08  examined 4 scheduled methods
+  LT-S08  examined 4 periodic schedulings
   LT-S12  examined 1 SPI registry files
   LT-S09  examined 180 java sources
   LT-S11  examined 4 scheduled methods, 61 files that could size the pool
@@ -62,7 +62,7 @@ resolved from the file alone.
 | **LT-S01** | a literal skip-tests in the build config outranks `-DskipTests=false`; `mvn test` reports success having run 0 tests | parses every `pom.xml`; literal `true` inside the surefire/failsafe configuration. A property reference (`${skipTests}`) or a `<properties>` default is **not** this rule — those stay overridable |
 | **LT-S04** | version control ignores the test sources; they compile, run, pass, and vanish on commit | shells out to `git check-ignore -v` for each test source. We do not reimplement ignore semantics — an approximation would produce exactly the confidently-wrong answer this project exists to prevent |
 | **LT-P01** | a character above U+FFFF in the deployment descriptor; the container's parser rejects it, every path returns 500, and nothing is logged | scans `web.xml` and `WEB-INF/*.xml` for code points `> 0xFFFF`. BMP symbols (`⛔ ⚠ ★`) and CJK are fine |
-| **LT-S08** | a scheduled method whose body has no top-level `catch (Throwable)`. ⚠️ The consequence this rule used to state — removed from the scheduler for good, logging nothing — is **retracted for Spring `@Scheduled`, which is what this check matches**; see the retraction below | masks strings and comments, then brace-matches the method body. A `catch` that covers only part of the body, or catches narrower than `Throwable`, still trips |
+| **LT-S08** | a `scheduleAtFixedRate` / `scheduleWithFixedDelay` call on a receiver the file declares as `ScheduledExecutorService` / `ScheduledThreadPoolExecutor`, whose task body has no top-level `catch (Throwable)` | masks strings and comments, then brace-matches the task body. Resolves inline lambdas, anonymous and named `Runnable`s declared in the same file. ⛔ Spring's `TaskScheduler` family is skipped — it decorates the task; an undeclared receiver is `UNKNOWN`, never `CLEAR`. Re-scoped 2026-11-13, see below |
 | **LT-S12** | a class implementing an SPI interface that nobody added to `META-INF/services/<fqn>`; it compiles, it reviews, and `ServiceLoader` never instantiates it | reads each registry file and matches implementations that are in the interface's package or import it by name. ⚠️ A class inheriting the interface through a base class is **not** detected — resolving that needs a type graph |
 | **LT-S09** | a `static final` field initialised from the config service; changing the value in the UI does nothing until a restart, and nothing says so | matches a config-shaped receiver plus a value-returning read. ⚠️ `getInstance` / `getBean` are excluded — freezing a singleton is correct, and including them produced 42 findings against code that was fine |
 | **LT-S11** | two or more scheduled methods with an unsized pool; Spring's default `TaskScheduler` runs **one** thread, so one slow run delays all the others | counts scheduled entry points, then looks for any way the pool is sized. One finding per checkout, not per method. Never fires on a single job |
@@ -76,7 +76,7 @@ Run across **23 modules** of a commercial Java estate (four product lines, rough
 |---|---:|---:|---|
 | **LT-S01** | 17 | 17 | builds that would report success having run zero tests |
 | **LT-S04** | 12 | 12 | test files that compile, pass, and vanish on commit — all in one module |
-| **LT-S08** | 55 | **34** | 43 of the 55 have no `try` at all; the other 12 catch narrower than `Throwable` |
+| **LT-S08** | ~~55~~ | ~~**34**~~ | ⚠️ **withdrawn** — these counted `@Scheduled` methods, which do not behave this way. Re-run below |
 | **LT-P01** | 0 | 0 | — |
 | **LT-S09** | 28 | 28 | config values frozen at class load (gj + kx only; the sweep timed out before vv) |
 | **LT-S11** | 5 | 5 | one per module — up to 11 scheduled methods sharing a single thread |
@@ -100,14 +100,73 @@ observed 3 seconds:
 | bare `ScheduledExecutorService.scheduleWithFixedDelay` | **1** | no |
 
 The "removed for the life of the process, in silence" behaviour belongs to the bare executor.
-So all LT-S08 counts in this file — **55 here and 12 on the public repositories** — are
-pattern-present counts whose attached consequence does not apply. The methods really do lack a
-top-level guard, and guarding plus logging is still the better shape, but ⛔ these numbers must
-not be quoted as jobs that stopped. Re-pointing the check at bare `ScheduledExecutorService`
-is open work and has not been done.
+So all LT-S08 counts published before this date — **55 here and 12 on the public repositories** —
+are pattern-present counts whose attached consequence does not apply. ⛔ They are withdrawn, and
+appear below only as the before-column of the re-scoping.
 
 A second checker reproducing the first does not test the claim; it tests the match. That gap is
 process-level, not specific to this rule.
+
+### The re-scoping, and what it changed
+
+The check was re-pointed at the mechanism that actually behaves this way: a
+`scheduleAtFixedRate` / `scheduleWithFixedDelay` call on a receiver the file declares as
+`ScheduledExecutorService` / `ScheduledThreadPoolExecutor`. Spring's `TaskScheduler` family is
+skipped by name; a receiver the file does not declare is `UNKNOWN`, never `CLEAR`.
+
+Both populations were then re-run **on the same day, with both jars built from this repository**,
+so the columns are comparable. Public repositories, at the same pinned commits as the
+ten-repository table further down this file:
+
+| repository | old rule (`@Scheduled`) | new: schedulings examined | new: tripped (prod) | (test) | UNKNOWN |
+|---|---:|---:|---:|---:|---:|
+| PowerJob/PowerJob | 3 | 10 | **4** | 0 | 6 |
+| YunaiV/ruoyi-vue-pro | 3 | 4 | **2** | 0 | 1 |
+| apache/dolphinscheduler | 0 | 10 | **6** | 2 | 1 |
+| apache/zeppelin | 0 | 14 | **10** | 0 | 4 |
+| codecentric/spring-boot-admin | 0 | 3 | 0 | 0 | 0 |
+| elunez/eladmin | 0 | 0 | 0 | 0 | 0 |
+| linlinjava/litemall | 4 | 0 | 0 | 0 | 0 |
+| macrozheng/mall | 1 | 0 | 0 | 0 | 0 |
+| openmrs/openmrs-core | 1 | 0 | 0 | 0 | 0 |
+| spring-projects/spring-petclinic | 0 | 0 | 0 | 0 | 0 |
+| **total** | **12** | | **22** | **2** | **12** |
+
+🔴 **The two rules select almost disjoint sets of code.** Every finding litemall, mall and
+openmrs contributed to the old 12 is gone; everything zeppelin and dolphinscheduler contribute
+to the new 22 is new. Framework annotations cluster in CRUD-shaped applications; raw
+`ScheduledExecutorService` clusters in platform and infrastructure code. Re-scoping did not
+filter the old findings — it replaced the population. A number that survives such a swap would
+have been the surprising outcome.
+
+And on the commercial estate, re-run the same day across **76 modules** (the earlier run covered
+23; the exact 23 are not reconstructible, so this is a wider sweep, not a reproduction):
+
+| | old rule (`@Scheduled`) | new rule (bare executor) |
+|---|---:|---:|
+| tripped | **120** | **2** |
+| UNKNOWN | 0 | 3 (all of them files that are not valid UTF-8) |
+| modules with the precondition present | most | **2 of 76** |
+
+🔴 **The idiom that carries the consequence is close to absent there.** Two findings in 76
+modules, and one of them is vendored third-party scaffolding rather than code the team wrote.
+Both were read back against the source:
+
+- `…/shiro/web/session/SpringSessionValidationScheduler.java:88` — an anonymous `Runnable` with
+  no guard at all, on a `private ScheduledExecutorService`. One throw and session validation
+  stops for the life of the process, so expired sessions are never reaped. Note the name and the
+  log line both say *Spring*; the code is a raw JDK executor. Reading the name would have got
+  this wrong in both directions.
+- `…/sensitiveword/FilterWordsManager.java:88` — the sensitive-word list refresh, wrapped in
+  `catch (Exception)`. An `Error` — an oversized list, a lazily loaded class — suppresses the
+  refresh permanently and the filter keeps running on a stale word list, silently.
+
+Six findings in total were read back against their source by hand before publishing this table:
+two in zeppelin, two in PowerJob, and the two above.
+
+⚠️ What this does **not** say: the old 55/120 were not imaginary. Those methods really do lack a
+top-level guard, and guarding plus logging is still the better shape. What they lacked was the
+consequence printed next to them.
 
 ⚠️ **Two numbers, not one.** The 55 and the 34 differ because three product lines ship copies of
 the same files; each copy is a separate running service, so 55 is the operational count and 34
@@ -146,21 +205,26 @@ Selection was fixed before the run: deployable applications (not libraries — f
 rules look for application patterns, so a sample of libraries would score zero and mean
 nothing), Maven, maintained, with four projects first committed 2012–2015 as an age contrast.
 
-| repository | commit | S01 | S04 | P01 | S08 | S12 | S09 | S11 |
+| repository | commit | S01 | S04 | P01 | S08 ⚠️ | S12 | S09 | S11 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| [PowerJob/PowerJob](https://github.com/PowerJob/PowerJob) | `d92ad66277` | 0 | 0 | – | **3** | – | 0 | 0 |
-| [YunaiV/ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro) | `3e13d8ea90` | 0 | 0 | – | **3** | 0 | 0 | 0 |
-| [apache/dolphinscheduler](https://github.com/apache/dolphinscheduler) | `bae5e00691` | 0 | 0 | – | – | – | **7** | – |
-| [apache/zeppelin](https://github.com/apache/zeppelin) | `95b0ca5d2f` | 0 | 0 | 0 | – | – | 0 | – |
-| [codecentric/spring-boot-admin](https://github.com/codecentric/spring-boot-admin) | `dbb8872310` | 0 | 0 | – | – | – | 0 | – |
+| [PowerJob/PowerJob](https://github.com/PowerJob/PowerJob) | `d92ad66277` | 0 | 0 | – | **4** | – | 0 | 0 |
+| [YunaiV/ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro) | `3e13d8ea90` | 0 | 0 | – | **2** | 0 | 0 | 0 |
+| [apache/dolphinscheduler](https://github.com/apache/dolphinscheduler) | `bae5e00691` | 0 | 0 | – | **8** | – | **7** | – |
+| [apache/zeppelin](https://github.com/apache/zeppelin) | `95b0ca5d2f` | 0 | 0 | 0 | **10** | – | 0 | – |
+| [codecentric/spring-boot-admin](https://github.com/codecentric/spring-boot-admin) | `dbb8872310` | 0 | 0 | – | 0 | – | 0 | – |
 | [elunez/eladmin](https://github.com/elunez/eladmin) | `646c58c30f` | **2** | 0 | – | – | – | 0 | – |
-| [linlinjava/litemall](https://github.com/linlinjava/litemall) | `a1ef964a71` | 0 | 0 | – | **4** | – | 0 | **1** |
-| [macrozheng/mall](https://github.com/macrozheng/mall) | `dcaa93b315` | 0 | 0 | – | **1** | – | 0 | – |
-| [openmrs/openmrs-core](https://github.com/openmrs/openmrs-core) | `6a2048e644` | 0 | 0 | 0 | **1** | 0 | 0 | – |
+| [linlinjava/litemall](https://github.com/linlinjava/litemall) | `a1ef964a71` | 0 | 0 | – | – | – | 0 | **1** |
+| [macrozheng/mall](https://github.com/macrozheng/mall) | `dcaa93b315` | 0 | 0 | – | – | – | 0 | – |
+| [openmrs/openmrs-core](https://github.com/openmrs/openmrs-core) | `6a2048e644` | 0 | 0 | 0 | – | 0 | 0 | – |
 | [spring-projects/spring-petclinic](https://github.com/spring-projects/spring-petclinic) | `500158f732` | 0 | 0 | – | – | – | – | – |
-| **total** / repos with the precondition | | **2**/10 | **0**/10 | **0**/2 | **12**/5 | **0**/2 | **7**/9 | **1**/3 |
+| **total** / repos with the precondition | | **2**/10 | **0**/10 | **0**/2 | **24**/4 | **0**/2 | **7**/9 | **1**/3 |
 
-**`–` means the precondition is absent**, not clean: no `@Scheduled` in the tree, no
+⚠️ **The S08 column is the re-scoped rule, re-run 2026-11-13** (the withdrawn `@Scheduled`
+numbers it replaces are in the comparison table earlier in this file). It counts tripped
+findings including two in test sources; 12 further schedulings came back `UNKNOWN` because the
+receiver is not declared in the file.
+
+**`–` means the precondition is absent**, not clean: no periodic scheduling in the tree, no
 `META-INF/services`, no deployment descriptor. Those cells carry no information and are not
 counted. `**n**` is a finding.
 
@@ -193,6 +257,9 @@ that nothing here could be decided after seeing the numbers. Two predictions wer
 - *"LT-S09's precondition will be rare — open source rarely uses a config service."* It was
   present in **9 of 10**.
 - *"LT-S11 will fire more widely than LT-S08."* It fired **once**; LT-S08 fired twelve times.
+  ⚠️ Both sides of that comparison used the pre-re-scoping LT-S08. ⛔ The prediction record is
+  left exactly as it was written — see "What was predicted, and what was wrong" above; it is a
+  record of what was predicted, not a place to tidy up afterwards.
 
 Both errors ran the same way: the preconditions were far more common than expected. The
 overall shape — "two or three untested, one or two clean, two or three firing" — was also
